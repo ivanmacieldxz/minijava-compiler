@@ -1,9 +1,14 @@
 package lexer
 
-import sourcemanager.SourceManager
+import token.Token
 
-class LexicalAnalyzer(
-    private val sourceManager: SourceManager
-) {
-    
+interface LexicalAnalyzer {
+
+    companion object {
+        const val operators = "><!=&|+-*="
+        const val punctuation = "(){};,.:"
+    }
+
+    fun getNextToken(): Token
+
 }
