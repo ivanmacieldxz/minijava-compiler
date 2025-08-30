@@ -59,7 +59,7 @@ class LexicalAnalyzerImpl(
                             goToNextChar = false
                             token = Token.EOFToken
                         }
-                        currentChar in LexicalAnalyzer.operators -> {
+                        currentChar in LexicalAnalyzer.OPERATORS -> {
                             when (currentChar) {
                                 '%' -> buildToken(TokenType.MODULUS)
                                 '*' -> buildToken(TokenType.MULTIPLICATION)
@@ -68,7 +68,7 @@ class LexicalAnalyzerImpl(
                                 }
                             }
                         }
-                        currentChar in LexicalAnalyzer.punctuation -> {
+                        currentChar in LexicalAnalyzer.PUNCTUATION -> {
                             when (currentChar) {
                                 '(' -> buildToken(TokenType.LEFT_BRACKET)
                                 ')' -> buildToken(TokenType.RIGHT_BRACKET)
@@ -81,7 +81,7 @@ class LexicalAnalyzerImpl(
                             }
                         }
                         currentChar.isWhitespace() -> {
-                            continue
+                            lexeme = ""
                         }
                         else -> {
                             lexeme = ""
@@ -131,7 +131,7 @@ class LexicalAnalyzerImpl(
                 }
                 BUILDING_CLASS_IDENTIFIER -> {
                     when {
-                        !(currentChar.isUpperCase() || currentChar.isLowerCase() || currentChar == '_') -> {
+                        !(currentChar.isUpperCase() || currentChar.isDigit() || currentChar.isLowerCase() || currentChar == '_') -> {
                             goToNextChar = false
                             buildToken(TokenType.CLASS_IDENTIFIER)
                         }
@@ -143,7 +143,7 @@ class LexicalAnalyzerImpl(
                 BUILDING_IDENTIFIER_OR_KEYWORD -> {
                     //todo: keywords
                     when {
-                        !(currentChar.isUpperCase() || currentChar.isLowerCase() || currentChar == '_') -> {
+                        !(currentChar.isUpperCase() || currentChar.isDigit() || currentChar.isLowerCase() || currentChar == '_') -> {
                             goToNextChar = false
                             buildToken(TokenType.MET_VAR_IDENTIFIER)
                         }

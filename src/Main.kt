@@ -17,7 +17,7 @@ fun main(args: Array<String>) {
         do {
             token = lexer.getNextToken()
 
-            println("Token: (" + token.type.toString() + ", \"" + token.lexeme + "\", " + token.lineNumber + ")")
+            println("Token: (" + token.type.toString() + ", " + token.lexeme + ", " + token.lineNumber + ")")
         } while (token != Token.EOFToken)
 
         sourceManager.close()

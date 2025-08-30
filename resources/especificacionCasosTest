@@ -1,0 +1,26 @@
+por probar:
+        .empieza por mayúscula
+            - sigue por mayúscula, minúscula o _ o digito
+        .empieza por minúscula
+            - sigue por mayúscula, minúscula o _ o digito
+        .empieza por dígito
+            - sigue por dígito
+        .empieza por barra
+            - no sigue por barra
+            - sigue por barra y sigue lo que sea (ignora)
+            - sigue por * y termina el comentario (ignora)
+        .empieza por comillas simples
+            - sigue por barra, caracter y '
+            - sigue por caracter y '
+        .empieza por comillas dobles
+            - sigue por comillas dobles
+            - sigue por caracter | \caracter_no_blanco | espacio no \n y comillas dobles
+        .EOF
+        .es %
+        .es *
+        .empieza por un símbolo que puede ser operador compuesto
+            - es un operador compuesto
+            - no es un operador compuesto
+        .es símbolo de puntuación
+        .es blanco (debería ignorarse)
+        .cualquier otro [no debería probarse, dado que sería error en e0]

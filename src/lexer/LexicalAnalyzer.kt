@@ -5,8 +5,8 @@ import token.Token
 interface LexicalAnalyzer {
 
     companion object {
-        const val operators = "><!=&|+-*"
-        const val punctuation = "(){};,.:"
+        const val OPERATORS = "><!=&|+-*%"
+        const val PUNCTUATION = "(){};,.:"
     }
 
     fun getNextToken(): Token
