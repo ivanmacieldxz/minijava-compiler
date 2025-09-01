@@ -1,5 +1,6 @@
 import lexer.LexicalAnalyzer
 import lexer.LexicalAnalyzerImpl
+import lexer.LexicalException
 import sourcemanager.SourceManagerImpl
 import token.Token
 import java.io.FileNotFoundException
@@ -9,25 +10,33 @@ fun main(args: Array<String>) {
 
     val sourceManager = SourceManagerImpl()
     val lexer: LexicalAnalyzer = LexicalAnalyzerImpl(sourceManager)
-    lateinit var token: Token
+    var token: Token? = null
+    var wereErrors = false
 
     try {
         sourceManager.open(args[0])
 
         do {
-            token = lexer.getNextToken()
+            try {
+                token = lexer.getNextToken()
 
-            println("Token: (" + token.type.toString() + ", " + token.lexeme + ", " + token.lineNumber + ")")
-        } while (token != Token.EOFToken)
+                println("Token: (" + token.type.toString() + ", " + token.lexeme + ", " + token.lineNumber + ")")
+            } catch (e: LexicalException) {
+                wereErrors = true
+                println(e.errorReport())
+            }
+        } while (token == null || token != Token.EOFToken)
 
-        sourceManager.close()
     } catch (_: FileNotFoundException) {
         println("Error: archivo a compilar no encontrado.")
     } catch (_: IOException) {
-        println("Error mientras durante la lectura del archivo especificado.")
-    } catch (e: Exception) {
-        e.printStackTrace()
+        println("Error durante la lectura del archivo especificado.")
+    } finally {
+        sourceManager.close()
     }
 
-    println("[SinErrores]")
+    if (!wereErrors) {
+        println()
+        println("[SinErrores]")
+    }
 }

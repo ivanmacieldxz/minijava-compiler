@@ -16,20 +16,25 @@ class LexicalAnalyzerImpl(
     private var lexeme = ""
     private var currentChar = ' '
     private var token: Token? = null
+    private var columnNumber = 0
+    private var resetColumnNumber = false
 
     override fun getNextToken(): Token {
         token = null
         lexerState = IDLE
         lexeme = ""
 
+        if (resetColumnNumber)
+            columnNumber = 0
+
         while (token == null) {
 
             if (goToNextChar) {
                 currentChar = sourceManager.nextChar
+                columnNumber++
+                resetColumnNumber = currentChar == '\n'
             }
 
-            //TODO: considerar eof para estados que no devuelven al encontrar un caracter que no puede reconocer
-            //en particular, sería para los autómatas de strings y chars, que puede ser que no hayan terminado de formarse para cuando llegue el eof
             when (lexerState) {
                 IDLE -> {
                     lexeme += currentChar
@@ -80,12 +85,20 @@ class LexicalAnalyzerImpl(
                                 ':' -> buildToken(TokenType.COLON)
                             }
                         }
+                        currentChar == '\n' -> {
+                            lexeme = ""
+                            columnNumber = 0
+                        }
                         currentChar.isWhitespace() -> {
                             lexeme = ""
                         }
                         else -> {
-                            lexeme = ""
-                            throw Exception("Error léxico, caracter inválido" + currentChar.code)
+                            throw InvalidCharacterException(
+                                "$currentChar no es un símbolo válido.",
+                                lexeme,
+                                sourceManager.lineNumber,
+                                columnNumber
+                            )
                         }
                     }
                 }
@@ -141,11 +154,33 @@ class LexicalAnalyzerImpl(
                     }
                 }
                 BUILDING_IDENTIFIER_OR_KEYWORD -> {
-                    //todo: keywords
                     when {
                         !(currentChar.isUpperCase() || currentChar.isDigit() || currentChar.isLowerCase() || currentChar == '_') -> {
                             goToNextChar = false
-                            buildToken(TokenType.MET_VAR_IDENTIFIER)
+
+                            when (lexeme) {
+                                "class" -> buildToken(TokenType.CLASS)
+                                "extends" -> buildToken(TokenType.EXTENDS)
+                                "public" -> buildToken(TokenType.PUBLIC)
+                                "static" -> buildToken(TokenType.STATIC)
+                                "void" -> buildToken(TokenType.VOID)
+                                "boolean" -> buildToken(TokenType.BOOLEAN)
+                                "char" -> buildToken(TokenType.CHAR)
+                                "int" -> buildToken(TokenType.INT)
+                                "abstract" -> buildToken(TokenType.ABSTRACT)
+                                "final" -> buildToken(TokenType.FINAL)
+                                "if" -> buildToken(TokenType.IF)
+                                "else" -> buildToken(TokenType.ELSE)
+                                "while" -> buildToken(TokenType.WHILE)
+                                "return" -> buildToken(TokenType.RETURN)
+                                "var" -> buildToken(TokenType.VAR)
+                                "this" -> buildToken(TokenType.THIS)
+                                "new" -> buildToken(TokenType.NEW)
+                                "null" -> buildToken(TokenType.NULL)
+                                "true" -> buildToken(TokenType.TRUE)
+                                "false" -> buildToken(TokenType.FALSE)
+                                else -> buildToken(TokenType.MET_VAR_IDENTIFIER)
+                            }
                         }
                         else -> {
                             lexeme += currentChar
@@ -156,7 +191,15 @@ class LexicalAnalyzerImpl(
                     when {
                         currentChar.isDigit().not() -> {
                             goToNextChar = false
-                            buildToken(TokenType.INTEGER_CONSTANT)
+                            if (lexeme.length > 9)
+                                throw IntLiteralTooLongException(
+                                    "el literal entero supera la longitud máxima de 9 dígitos",
+                                    lexeme,
+                                    sourceManager.lineNumber,
+                                    columnNumber
+                                )
+                            else
+                                buildToken(TokenType.INTEGER_CONSTANT)
                         }
                         else -> {
                             lexeme += currentChar
@@ -164,22 +207,36 @@ class LexicalAnalyzerImpl(
                     }
                 }
                 BUILDING_CHAR_CONSTANT -> {
+                    lexeme += currentChar
                     when (currentChar) {
                         '\'' -> {
-                            throw Exception("Error léxico: char vacío")
+                            throw EmptyCharException(
+                                "no se admiten literales char vacíos.",
+                                lexeme,
+                                sourceManager.lineNumber,
+                                columnNumber
+                            )
                         }
                         '\\' -> {
-                            lexeme += currentChar
                             lexerState = BUILDING_SCAPED_CHAR_CONSTANT
                         }
                         END_OF_FILE -> {
-                            throw Exception("Error léxico: char no terminado")
+                            throw UnendedCharException(
+                                "literal char mal formado. Se esperaba un <carácter>', pero se encontró EOF.",
+                                lexeme,
+                                sourceManager.lineNumber,
+                                columnNumber
+                            )
                         }
                         '\n' -> {
-                            throw Exception("Error léxico: no se admiten saltos de línea dentro de un literal char")
+                            throw NewLineException(
+                                "no se admiten saltos de línea dentro de un literal char.",
+                                lexeme.replace("\n", "_"),
+                                sourceManager.lineNumber,
+                                columnNumber
+                            )
                         }
                         else -> {
-                            lexeme += currentChar
                             lexerState = CLOSING_CHAR_CONSTANT
                         }
                     }
@@ -187,15 +244,35 @@ class LexicalAnalyzerImpl(
                 BUILDING_SCAPED_CHAR_CONSTANT -> {
                     when (currentChar) {
                         END_OF_FILE -> {
-                            throw Exception("Error léxico: char no terminado")
+                            throw UnendedCharException(
+                                "literal char mal formado, se esperaba un <carácter>', pero se encontró EOF.",
+                                lexeme,
+                                sourceManager.lineNumber,
+                                columnNumber
+                            )
                         }
                         '\n' -> {
-                            throw Exception("Error léxico: no se admiten saltos de línea dentro de un literal char")
+                            throw NewLineException(
+                                "no se admiten saltos de línea dentro de un literal char.",
+                                lexeme,
+                                sourceManager.lineNumber,
+                                columnNumber
+                            )
                         }
                         ' ' -> {
-                            throw Exception("Error léxico, no se admiten espacios como caracteres escapados")
+                            throw InvalidScapedCharException(
+                                "no se admiten espacios como caracteres escapados.",
+                                lexeme,
+                                sourceManager.lineNumber,
+                                columnNumber
+                            )
                         }
-                        '\t' -> throw Exception("Error léxico, no se admiten tabulaciones como caracteres escapados")
+                        '\t' -> throw InvalidScapedCharException(
+                            "no se admiten tabulaciones como caracteres escapados.",
+                            lexeme,
+                            sourceManager.lineNumber,
+                            columnNumber
+                        )
                         else -> {
                             lexeme += currentChar
                             lexerState = CLOSING_CHAR_CONSTANT
@@ -209,23 +286,48 @@ class LexicalAnalyzerImpl(
                             buildToken(TokenType.CHAR_CONSTANT)
                         }
                         END_OF_FILE -> {
-                            throw Exception("Error léxico: char no terminado")
+                            throw UnendedCharException(
+                                "literal char no cerrado. Se esperaba ', pero se encontró EOF.",
+                                lexeme,
+                                sourceManager.lineNumber,
+                                columnNumber
+                            )
                         }
                         '\n' -> {
-                            throw Exception("Error léxico: no se admiten saltos de línea dentro de un literal char")
+                            throw NewLineException(
+                                "literal char no cerrado. Se esperaba ', pero se encontró un salto de línea.",
+                                lexeme,
+                                sourceManager.lineNumber,
+                                columnNumber
+                            )
                         }
                         else -> {
-                            throw Exception("Error léxico: no se admite más de un caracter dentro de un char")
+                            throw MoreThanOneCharInLiteralException(
+                                "literal char mal formado: no se admite más de un caracter dentro de un literal char.",
+                                lexeme,
+                                sourceManager.lineNumber,
+                                columnNumber
+                            )
                         }
                     }
                 }
                 BUILDING_STRING_CONSTANT -> {
                     when (currentChar) {
                         END_OF_FILE -> {
-                            throw Exception("Error léxico: string no terminado")
+                            throw UnendedStringException(
+                                "literal string no cerrado: se esperaba '\"' pero se encontró EOF.",
+                                lexeme,
+                                sourceManager.lineNumber,
+                                columnNumber
+                            )
                         }
                         '\n' -> {
-                            throw Exception("Error léxico: no se admiten saltos de línea dentro de un literal string")
+                            throw NewLineException(
+                                "no se admiten saltos de línea dentro de un literal string.",
+                                lexeme,
+                                sourceManager.lineNumber,
+                                columnNumber
+                            )
                         }
                         '\"' -> {
                             lexeme += currentChar
@@ -243,10 +345,20 @@ class LexicalAnalyzerImpl(
                 BUILDING_SCAPED_STRING_CONSTANT -> {
                     when (currentChar) {
                         ' ', '\t' -> {
-                            throw Exception("Error léxico, no se admiten espacios o tabulaciones como caracteres escapados")
+                            throw InvalidScapedCharException(
+                                "no se admiten espacios ni tabulaciones como caracteres escapados.",
+                                lexeme,
+                                sourceManager.lineNumber,
+                                columnNumber
+                            )
                         }
                         END_OF_FILE -> {
-                            throw Exception("Error léxico: String no terminado")
+                            throw UnendedStringException(
+                                "literal string no finalizado, se esperaba <caracter>\", pero se encontró EOF.",
+                                lexeme,
+                                sourceManager.lineNumber,
+                                columnNumber
+                            )
                         }
                         else -> {
                             lexeme += currentChar
@@ -267,25 +379,27 @@ class LexicalAnalyzerImpl(
                             }
                         }
                         '&' -> {
-                            when (lexeme) {
-                                "&" -> {
-                                    lexeme += currentChar
-                                }
-                                else -> {
-                                    goToNextChar = false
-                                    throw Exception("Excepción Léxica: símbolo mal formado")
-                                }
+                            lexeme += currentChar
+                            if (lexeme != "&&") {
+                                goToNextChar = false
+                                throw UnendedCompoundOperatorException(
+                                    "operador compuesto mal formado.",
+                                    lexeme,
+                                    sourceManager.lineNumber,
+                                    columnNumber
+                                )
                             }
                         }
                         '|' -> {
-                            when (lexeme) {
-                                "|" -> {
-                                    lexeme += currentChar
-                                }
-                                else -> {
-                                    goToNextChar = false
-                                    throw Exception("Excepción Léxica: símbolo mal formado")
-                                }
+                            lexeme += currentChar
+                            if (lexeme != "||") {
+                                goToNextChar = false
+                                throw UnendedCompoundOperatorException(
+                                    "operador compuesto mal formado.",
+                                    lexeme,
+                                    sourceManager.lineNumber,
+                                    columnNumber
+                                )
                             }
                         }
                         '+' -> {
