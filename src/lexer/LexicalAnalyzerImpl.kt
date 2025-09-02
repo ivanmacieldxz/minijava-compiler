@@ -18,21 +18,27 @@ class LexicalAnalyzerImpl(
     private var token: Token? = null
     private var columnNumber = 0
     private var resetColumnNumber = false
+    private var currentLine = ""
 
     override fun getNextToken(): Token {
         token = null
         lexerState = IDLE
         lexeme = ""
 
-        if (resetColumnNumber)
-            columnNumber = 0
-
         while (token == null) {
+
+            //todo: ver que onda con que no reinicia el contador de columna cuando se encuentra un salto de línea (especialmente en los comentarios
+            if (resetColumnNumber)
+                columnNumber = 0
+
+            if (currentChar == '\n')
+                currentLine = ""
 
             if (goToNextChar) {
                 currentChar = sourceManager.nextChar
                 columnNumber++
                 resetColumnNumber = currentChar == '\n'
+                currentLine += currentChar
             }
 
             when (lexerState) {
@@ -50,7 +56,6 @@ class LexicalAnalyzerImpl(
                             lexerState = BUILDING_INTEGER_CONSTANT
                         }
                         currentChar == '/' -> {
-                            lexeme += currentChar
                             lexerState = POTENTIALLY_READING_COMMENT
                         }
                         currentChar == '\'' -> {
@@ -77,8 +82,8 @@ class LexicalAnalyzerImpl(
                             when (currentChar) {
                                 '(' -> buildToken(TokenType.LEFT_BRACKET)
                                 ')' -> buildToken(TokenType.RIGHT_BRACKET)
-                                '{' -> buildToken(TokenType.LEFT_SQUARE_BRACKET)
-                                '}' -> buildToken(TokenType.RIGHT_SQUARE_BRACKET)
+                                '{' -> buildToken(TokenType.LEFT_CURLY_BRACKET)
+                                '}' -> buildToken(TokenType.RIGHT_CURLY_BRACKET)
                                 ';' -> buildToken(TokenType.SEMICOLON)
                                 ',' -> buildToken(TokenType.COMMA)
                                 '.' -> buildToken(TokenType.DOT)
@@ -97,7 +102,8 @@ class LexicalAnalyzerImpl(
                                 "$currentChar no es un símbolo válido.",
                                 lexeme,
                                 sourceManager.lineNumber,
-                                columnNumber
+                                columnNumber,
+                                currentLine
                             )
                         }
                     }
@@ -191,15 +197,17 @@ class LexicalAnalyzerImpl(
                     when {
                         currentChar.isDigit().not() -> {
                             goToNextChar = false
-                            if (lexeme.length > 9)
+                            if (lexeme.length > 9) {
                                 throw IntLiteralTooLongException(
                                     "el literal entero supera la longitud máxima de 9 dígitos",
                                     lexeme,
                                     sourceManager.lineNumber,
-                                    columnNumber
+                                    columnNumber,
+                                    currentLine
                                 )
-                            else
-                                buildToken(TokenType.INTEGER_CONSTANT)
+                            } else {
+                                buildToken(TokenType.INTEGER_LITERAL)
+                            }
                         }
                         else -> {
                             lexeme += currentChar
@@ -214,26 +222,31 @@ class LexicalAnalyzerImpl(
                                 "no se admiten literales char vacíos.",
                                 lexeme,
                                 sourceManager.lineNumber,
-                                columnNumber
+                                columnNumber,
+                                currentLine
                             )
                         }
                         '\\' -> {
                             lexerState = BUILDING_SCAPED_CHAR_CONSTANT
                         }
                         END_OF_FILE -> {
-                            throw UnendedCharException(
+                            lexeme = lexeme.substring(0, lexeme.length - 1)
+                            throw UnfinishedCharException(
                                 "literal char mal formado. Se esperaba un <carácter>', pero se encontró EOF.",
                                 lexeme,
                                 sourceManager.lineNumber,
-                                columnNumber
+                                columnNumber,
+                                currentLine
                             )
                         }
                         '\n' -> {
+                            lexeme = lexeme.substring(0, lexeme.length - 1)
                             throw NewLineException(
                                 "no se admiten saltos de línea dentro de un literal char.",
-                                lexeme.replace("\n", "_"),
+                                lexeme,
                                 sourceManager.lineNumber,
-                                columnNumber
+                                columnNumber,
+                                currentLine.replace("\n", " ")
                             )
                         }
                         else -> {
@@ -242,21 +255,26 @@ class LexicalAnalyzerImpl(
                     }
                 }
                 BUILDING_SCAPED_CHAR_CONSTANT -> {
+                    lexeme += currentChar
                     when (currentChar) {
                         END_OF_FILE -> {
-                            throw UnendedCharException(
+                            lexeme = lexeme.substring(0, lexeme.length - 1)
+                            throw UnfinishedCharException(
                                 "literal char mal formado, se esperaba un <carácter>', pero se encontró EOF.",
                                 lexeme,
                                 sourceManager.lineNumber,
-                                columnNumber
+                                columnNumber,
+                                currentLine
                             )
                         }
                         '\n' -> {
+                            lexeme = lexeme.substring(0, lexeme.length - 1)
                             throw NewLineException(
                                 "no se admiten saltos de línea dentro de un literal char.",
                                 lexeme,
                                 sourceManager.lineNumber,
-                                columnNumber
+                                columnNumber,
+                                currentLine.replace("\n", " "),
                             )
                         }
                         ' ' -> {
@@ -264,41 +282,46 @@ class LexicalAnalyzerImpl(
                                 "no se admiten espacios como caracteres escapados.",
                                 lexeme,
                                 sourceManager.lineNumber,
-                                columnNumber
+                                columnNumber,
+                                currentLine
                             )
                         }
                         '\t' -> throw InvalidScapedCharException(
                             "no se admiten tabulaciones como caracteres escapados.",
                             lexeme,
                             sourceManager.lineNumber,
-                            columnNumber
+                            columnNumber,
+                            currentLine
                         )
                         else -> {
-                            lexeme += currentChar
                             lexerState = CLOSING_CHAR_CONSTANT
                         }
                     }
                 }
                 CLOSING_CHAR_CONSTANT -> {
+                    lexeme += currentChar
                     when (currentChar) {
                         '\'' -> {
-                            lexeme += currentChar
-                            buildToken(TokenType.CHAR_CONSTANT)
+                            buildToken(TokenType.CHAR_LITERAL)
                         }
                         END_OF_FILE -> {
-                            throw UnendedCharException(
+                            lexeme = lexeme.substring(0, lexeme.length - 1)
+                            throw UnfinishedCharException(
                                 "literal char no cerrado. Se esperaba ', pero se encontró EOF.",
                                 lexeme,
                                 sourceManager.lineNumber,
-                                columnNumber
+                                columnNumber,
+                                currentLine
                             )
                         }
                         '\n' -> {
+                            lexeme = lexeme.substring(0, lexeme.length - 1)
                             throw NewLineException(
                                 "literal char no cerrado. Se esperaba ', pero se encontró un salto de línea.",
                                 lexeme,
                                 sourceManager.lineNumber,
-                                columnNumber
+                                columnNumber,
+                                currentLine.replace("\n", " "),
                             )
                         }
                         else -> {
@@ -306,68 +329,118 @@ class LexicalAnalyzerImpl(
                                 "literal char mal formado: no se admite más de un caracter dentro de un literal char.",
                                 lexeme,
                                 sourceManager.lineNumber,
-                                columnNumber
+                                columnNumber,
+                                currentLine
                             )
                         }
                     }
                 }
                 BUILDING_STRING_CONSTANT -> {
+                    lexeme += currentChar
                     when (currentChar) {
                         END_OF_FILE -> {
-                            throw UnendedStringException(
-                                "literal string no cerrado: se esperaba '\"' pero se encontró EOF.",
+                            lexeme = lexeme.substring(0, lexeme.length - 1)
+                            throw UnfinishedStringException(
+                                "literal string no cerrado: se esperaba \", pero se encontró EOF.",
                                 lexeme,
                                 sourceManager.lineNumber,
-                                columnNumber
+                                columnNumber,
+                                currentLine
                             )
                         }
                         '\n' -> {
+                            lexeme = lexeme.substring(0, lexeme.length - 1)
                             throw NewLineException(
                                 "no se admiten saltos de línea dentro de un literal string.",
                                 lexeme,
                                 sourceManager.lineNumber,
-                                columnNumber
+                                columnNumber,
+                                currentLine.replace("\n", " "),
                             )
                         }
                         '\"' -> {
-                            lexeme += currentChar
-                            buildToken(TokenType.STRING_CONSTANT)
+                            buildToken(TokenType.STRING_LITERAL)
                         }
                         '\\' -> {
-                            lexeme += currentChar
                             lexerState = BUILDING_SCAPED_STRING_CONSTANT
-                        }
-                        else -> {
-                            lexeme += currentChar
                         }
                     }
                 }
                 BUILDING_SCAPED_STRING_CONSTANT -> {
+                    lexeme += currentChar
                     when (currentChar) {
                         ' ', '\t' -> {
                             throw InvalidScapedCharException(
                                 "no se admiten espacios ni tabulaciones como caracteres escapados.",
                                 lexeme,
                                 sourceManager.lineNumber,
-                                columnNumber
+                                columnNumber,
+                                currentLine
                             )
                         }
                         END_OF_FILE -> {
-                            throw UnendedStringException(
+                            lexeme = lexeme.substring(0, lexeme.length - 1)
+                            throw UnfinishedStringException(
                                 "literal string no finalizado, se esperaba <caracter>\", pero se encontró EOF.",
                                 lexeme,
                                 sourceManager.lineNumber,
-                                columnNumber
+                                columnNumber,
+                                currentLine
+                            )
+                        }
+                        '\n' -> {
+                            lexeme = lexeme.substring(0, lexeme.length - 1)
+                            throw NewLineException(
+                                "no se admiten saltos de línea dentro de un literal string",
+                                lexeme,
+                                sourceManager.lineNumber,
+                                columnNumber,
+                                currentLine.replace("\n", " "),
                             )
                         }
                         else -> {
-                            lexeme += currentChar
                             lexerState = BUILDING_STRING_CONSTANT
                         }
                     }
                 }
                 BUILDING_OPERATOR -> {
                     when (currentChar) {
+                        END_OF_FILE -> {
+                            when (lexeme) {
+                                "&" -> {
+                                    throw UnfinishedCompoundOperatorException(
+                                        "operador compuesto mal formado, se esperaba &, pero se encontró EOF.",
+                                        lexeme,
+                                        sourceManager.lineNumber,
+                                        columnNumber,
+                                        currentLine
+                                    )
+                                }
+                                "|" -> {
+                                    throw UnfinishedCompoundOperatorException(
+                                        "operador compuesto mal formado, se esperaba |, pero se encontró EOF.",
+                                        lexeme,
+                                        sourceManager.lineNumber,
+                                        columnNumber,
+                                        currentLine
+                                    )
+                                }
+                            }
+                        }
+                        '\n' -> {
+                            when (lexeme) {
+                                "|", "&" -> {
+                                    goToNextChar = false
+                                    throw UnfinishedCompoundOperatorException(
+                                        "operador compuesto mal formado.",
+                                        lexeme,
+                                        sourceManager.lineNumber,
+                                        columnNumber,
+                                        currentLine.replace("\n", "")
+                                    )
+                                }
+                            }
+                        }
                         '=' -> {
                             when (lexeme) {
                                 ">", "<", "!", "=" -> {
@@ -379,27 +452,13 @@ class LexicalAnalyzerImpl(
                             }
                         }
                         '&' -> {
-                            lexeme += currentChar
-                            if (lexeme != "&&") {
-                                goToNextChar = false
-                                throw UnendedCompoundOperatorException(
-                                    "operador compuesto mal formado.",
-                                    lexeme,
-                                    sourceManager.lineNumber,
-                                    columnNumber
-                                )
+                            when (lexeme) {
+                                "&" -> lexeme += currentChar
                             }
                         }
                         '|' -> {
-                            lexeme += currentChar
-                            if (lexeme != "||") {
-                                goToNextChar = false
-                                throw UnendedCompoundOperatorException(
-                                    "operador compuesto mal formado.",
-                                    lexeme,
-                                    sourceManager.lineNumber,
-                                    columnNumber
-                                )
+                            when (lexeme) {
+                                "|" -> lexeme += currentChar
                             }
                         }
                         '+' -> {
@@ -407,18 +466,12 @@ class LexicalAnalyzerImpl(
                                 "+" -> {
                                     lexeme += currentChar
                                 }
-                                else -> {
-                                    goToNextChar = false
-                                }
                             }
                         }
                         '-' -> {
                             when (lexeme) {
                                 "-" -> {
                                     lexeme += currentChar
-                                }
-                                else -> {
-                                    goToNextChar = false
                                 }
                             }
                         }
@@ -469,6 +522,16 @@ class LexicalAnalyzerImpl(
                         }
                         "--" -> {
                             buildToken(TokenType.DECREMENT)
+                        }
+                        else -> {
+                            goToNextChar = false
+                            throw UnfinishedCompoundOperatorException(
+                                "operador compuesto mal formado.",
+                                lexeme +  currentChar,
+                                sourceManager.lineNumber,
+                                columnNumber,
+                                currentLine.replace("\n", "")
+                            )
                         }
                     }
 
