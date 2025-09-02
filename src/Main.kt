@@ -1,6 +1,7 @@
 import lexer.LexicalAnalyzer
 import lexer.LexicalAnalyzerImpl
 import lexer.LexicalException
+import sourcemanager.SourceManagerEfImpl
 import sourcemanager.SourceManagerImpl
 import token.Token
 import java.io.FileNotFoundException
@@ -8,7 +9,7 @@ import java.io.IOException
 
 fun main(args: Array<String>) {
 
-    val sourceManager = SourceManagerImpl()
+    val sourceManager = SourceManagerEfImpl()
     val lexer: LexicalAnalyzer = LexicalAnalyzerImpl(sourceManager)
     var token: Token? = null
     var wereErrors = false
