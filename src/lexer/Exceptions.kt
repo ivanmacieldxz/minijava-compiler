@@ -98,4 +98,20 @@ class UnfinishedCompoundOperatorException(
     line: String
 ): LexicalException(message, lexeme, lineNumber, columnNumber, line)
 
+class UnfinishedMultilineCommentException(
+    lineNumber: Int,
+    columnNumber: Int,
+    line: String
+): LexicalException("comentario multilínea no cerrado.", "", lineNumber, columnNumber, line) {
+    override fun errorReport(): String {
+        val lines = line.split("\n")
+
+        println(lines)
+
+        return "Error léxico en la línea $lineNumber, columna $columnNumber: $message\n" +
+                "Detalle: $line\n" +
+                " ".repeat(lines.last().length - 1) + "^\n"
+    }
+}
+
 

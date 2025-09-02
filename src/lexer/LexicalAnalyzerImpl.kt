@@ -31,7 +31,7 @@ class LexicalAnalyzerImpl(
             if (resetColumnNumber)
                 columnNumber = 0
 
-            if (currentChar == '\n')
+            if (lexerState != READING_MULTILINE_COMMENT && lexerState != CLOSING_MULTILINE_COMMENT && currentChar == '\n')
                 currentLine = ""
 
             if (goToNextChar) {
@@ -136,6 +136,11 @@ class LexicalAnalyzerImpl(
                         '*' -> {
                             lexerState = CLOSING_MULTILINE_COMMENT
                         }
+                        END_OF_FILE -> throw UnfinishedMultilineCommentException(
+                            sourceManager.lineNumber,
+                            columnNumber,
+                            currentLine
+                        )
                     }
                 }
                 CLOSING_MULTILINE_COMMENT -> {
@@ -143,6 +148,11 @@ class LexicalAnalyzerImpl(
                         '/' -> {
                             IDLE
                         }
+                        END_OF_FILE -> throw UnfinishedMultilineCommentException(
+                            sourceManager.lineNumber,
+                            columnNumber,
+                            currentLine
+                        )
                         else -> {
                             READING_MULTILINE_COMMENT
                         }
