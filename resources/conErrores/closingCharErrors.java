@@ -1,4 +1,9 @@
-///[Error:'|2]
+///[Error:'|7]
+///[Error:'c|8]
+///[Error:'\c|9]
+///[Error:'\ca|10]
+///[Error:'ca|11]
+///[Error:'c|12]
 '
 'c
 '\c
