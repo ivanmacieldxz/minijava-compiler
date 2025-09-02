@@ -277,22 +277,6 @@ class LexicalAnalyzerImpl(
                                 currentLine.replace("\n", " "),
                             )
                         }
-                        ' ' -> {
-                            throw InvalidScapedCharException(
-                                "no se admiten espacios como caracteres escapados.",
-                                lexeme,
-                                sourceManager.lineNumber,
-                                columnNumber,
-                                currentLine
-                            )
-                        }
-                        '\t' -> throw InvalidScapedCharException(
-                            "no se admiten tabulaciones como caracteres escapados.",
-                            lexeme,
-                            sourceManager.lineNumber,
-                            columnNumber,
-                            currentLine
-                        )
                         else -> {
                             lexerState = CLOSING_CHAR_CONSTANT
                         }
@@ -369,15 +353,6 @@ class LexicalAnalyzerImpl(
                 BUILDING_SCAPED_STRING_CONSTANT -> {
                     lexeme += currentChar
                     when (currentChar) {
-                        ' ', '\t' -> {
-                            throw InvalidScapedCharException(
-                                "no se admiten espacios ni tabulaciones como caracteres escapados.",
-                                lexeme,
-                                sourceManager.lineNumber,
-                                columnNumber,
-                                currentLine
-                            )
-                        }
                         END_OF_FILE -> {
                             lexeme = lexeme.substring(0, lexeme.length - 1)
                             throw UnfinishedStringException(
@@ -454,11 +429,17 @@ class LexicalAnalyzerImpl(
                         '&' -> {
                             when (lexeme) {
                                 "&" -> lexeme += currentChar
+                                else -> {
+                                    goToNextChar = false
+                                }
                             }
                         }
                         '|' -> {
                             when (lexeme) {
                                 "|" -> lexeme += currentChar
+                                else -> {
+                                    goToNextChar = false
+                                }
                             }
                         }
                         '+' -> {
@@ -466,12 +447,18 @@ class LexicalAnalyzerImpl(
                                 "+" -> {
                                     lexeme += currentChar
                                 }
+                                else -> {
+                                    goToNextChar = false
+                                }
                             }
                         }
                         '-' -> {
                             when (lexeme) {
                                 "-" -> {
                                     lexeme += currentChar
+                                }
+                                else -> {
+                                    goToNextChar = false
                                 }
                             }
                         }
