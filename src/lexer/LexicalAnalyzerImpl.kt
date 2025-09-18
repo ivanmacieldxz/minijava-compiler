@@ -16,8 +16,6 @@ class LexicalAnalyzerImpl(
     private var lexeme = ""
     private var currentChar = ' '
     private var token: Token? = null
-    private var columnNumber = 0
-    private var resetColumnNumber = false
     private var currentLine = ""
 
     override fun getNextToken(): Token {
@@ -27,17 +25,11 @@ class LexicalAnalyzerImpl(
 
         while (token == null) {
 
-            //todo: ver que onda con que no reinicia el contador de columna cuando se encuentra un salto de línea (especialmente en los comentarios
-            if (resetColumnNumber)
-                columnNumber = 0
-
             if (lexerState != READING_MULTILINE_COMMENT && lexerState != CLOSING_MULTILINE_COMMENT && currentChar == '\n')
                 currentLine = ""
 
             if (goToNextChar) {
                 currentChar = sourceManager.nextChar
-                columnNumber++
-                resetColumnNumber = currentChar == '\n'
                 currentLine += currentChar
             }
 
@@ -92,17 +84,16 @@ class LexicalAnalyzerImpl(
                         }
                         currentChar == '\n' -> {
                             lexeme = ""
-                            columnNumber = 0
                         }
                         currentChar.isWhitespace() -> {
                             lexeme = ""
                         }
                         else -> {
-                            throw InvalidCharacterException(
+                            throw InvalidSymbolException(
                                 "$currentChar no es un símbolo válido.",
                                 lexeme,
                                 sourceManager.lineNumber,
-                                columnNumber,
+                                sourceManager.columnNumber,
                                 currentLine
                             )
                         }
@@ -138,7 +129,7 @@ class LexicalAnalyzerImpl(
                         }
                         END_OF_FILE -> throw UnfinishedMultilineCommentException(
                             sourceManager.lineNumber,
-                            columnNumber,
+                            sourceManager.columnNumber,
                             currentLine
                         )
                     }
@@ -150,7 +141,7 @@ class LexicalAnalyzerImpl(
                         }
                         END_OF_FILE -> throw UnfinishedMultilineCommentException(
                             sourceManager.lineNumber,
-                            columnNumber,
+                            sourceManager.columnNumber,
                             currentLine
                         )
                         else -> {
@@ -212,7 +203,7 @@ class LexicalAnalyzerImpl(
                                     "el literal entero supera la longitud máxima de 9 dígitos",
                                     lexeme,
                                     sourceManager.lineNumber,
-                                    columnNumber,
+                                    sourceManager.columnNumber,
                                     currentLine
                                 )
                             } else {
@@ -232,7 +223,7 @@ class LexicalAnalyzerImpl(
                                 "no se admiten literales char vacíos.",
                                 lexeme,
                                 sourceManager.lineNumber,
-                                columnNumber,
+                                sourceManager.columnNumber,
                                 currentLine
                             )
                         }
@@ -245,7 +236,7 @@ class LexicalAnalyzerImpl(
                                 "literal char mal formado. Se esperaba un <carácter>', pero se encontró EOF.",
                                 lexeme,
                                 sourceManager.lineNumber,
-                                columnNumber,
+                                sourceManager.columnNumber,
                                 currentLine
                             )
                         }
@@ -255,7 +246,7 @@ class LexicalAnalyzerImpl(
                                 "no se admiten saltos de línea dentro de un literal char.",
                                 lexeme,
                                 sourceManager.lineNumber,
-                                columnNumber,
+                                sourceManager.columnNumber,
                                 currentLine.replace("\n", " ")
                             )
                         }
@@ -273,7 +264,7 @@ class LexicalAnalyzerImpl(
                                 "literal char mal formado, se esperaba un <carácter>', pero se encontró EOF.",
                                 lexeme,
                                 sourceManager.lineNumber,
-                                columnNumber,
+                                sourceManager.columnNumber,
                                 currentLine
                             )
                         }
@@ -283,7 +274,7 @@ class LexicalAnalyzerImpl(
                                 "no se admiten saltos de línea dentro de un literal char.",
                                 lexeme,
                                 sourceManager.lineNumber,
-                                columnNumber,
+                                sourceManager.columnNumber,
                                 currentLine.replace("\n", " "),
                             )
                         }
@@ -304,7 +295,7 @@ class LexicalAnalyzerImpl(
                                 "literal char no cerrado. Se esperaba ', pero se encontró EOF.",
                                 lexeme,
                                 sourceManager.lineNumber,
-                                columnNumber,
+                                sourceManager.columnNumber,
                                 currentLine
                             )
                         }
@@ -314,7 +305,7 @@ class LexicalAnalyzerImpl(
                                 "literal char no cerrado. Se esperaba ', pero se encontró un salto de línea.",
                                 lexeme,
                                 sourceManager.lineNumber,
-                                columnNumber,
+                                sourceManager.columnNumber,
                                 currentLine.replace("\n", " "),
                             )
                         }
@@ -323,7 +314,7 @@ class LexicalAnalyzerImpl(
                                 "literal char mal formado: no se admite más de un caracter dentro de un literal char.",
                                 lexeme,
                                 sourceManager.lineNumber,
-                                columnNumber,
+                                sourceManager.columnNumber,
                                 currentLine
                             )
                         }
@@ -338,7 +329,7 @@ class LexicalAnalyzerImpl(
                                 "literal string no cerrado: se esperaba \", pero se encontró EOF.",
                                 lexeme,
                                 sourceManager.lineNumber,
-                                columnNumber,
+                                sourceManager.columnNumber,
                                 currentLine
                             )
                         }
@@ -348,7 +339,7 @@ class LexicalAnalyzerImpl(
                                 "no se admiten saltos de línea dentro de un literal string.",
                                 lexeme,
                                 sourceManager.lineNumber,
-                                columnNumber,
+                                sourceManager.columnNumber,
                                 currentLine.replace("\n", " "),
                             )
                         }
@@ -369,7 +360,7 @@ class LexicalAnalyzerImpl(
                                 "literal string no finalizado, se esperaba <caracter>\", pero se encontró EOF.",
                                 lexeme,
                                 sourceManager.lineNumber,
-                                columnNumber,
+                                sourceManager.columnNumber,
                                 currentLine
                             )
                         }
@@ -379,7 +370,7 @@ class LexicalAnalyzerImpl(
                                 "no se admiten saltos de línea dentro de un literal string",
                                 lexeme,
                                 sourceManager.lineNumber,
-                                columnNumber,
+                                sourceManager.columnNumber,
                                 currentLine.replace("\n", " "),
                             )
                         }
@@ -397,7 +388,7 @@ class LexicalAnalyzerImpl(
                                         "operador compuesto mal formado, se esperaba &, pero se encontró EOF.",
                                         lexeme,
                                         sourceManager.lineNumber,
-                                        columnNumber,
+                                        sourceManager.columnNumber,
                                         currentLine
                                     )
                                 }
@@ -406,7 +397,7 @@ class LexicalAnalyzerImpl(
                                         "operador compuesto mal formado, se esperaba |, pero se encontró EOF.",
                                         lexeme,
                                         sourceManager.lineNumber,
-                                        columnNumber,
+                                        sourceManager.columnNumber,
                                         currentLine
                                     )
                                 }
@@ -420,7 +411,7 @@ class LexicalAnalyzerImpl(
                                         "operador compuesto mal formado.",
                                         lexeme,
                                         sourceManager.lineNumber,
-                                        columnNumber,
+                                        sourceManager.columnNumber,
                                         currentLine.replace("\n", "")
                                     )
                                 }
@@ -526,7 +517,7 @@ class LexicalAnalyzerImpl(
                                 "operador compuesto mal formado.",
                                 lexeme +  currentChar,
                                 sourceManager.lineNumber,
-                                columnNumber,
+                                sourceManager.columnNumber,
                                 currentLine.replace("\n", "")
                             )
                         }

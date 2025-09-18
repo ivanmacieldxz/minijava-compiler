@@ -10,11 +10,13 @@ class SourceManagerEfImpl: SourceManager {
     private var currentChar: Char? = null
     private lateinit var bufferedReader: BufferedReader
     private var lineNumber = 1
-    private var incrementLineNumberOnNextRead = false
+    private var wentPastNewLine = false
+    private var columnNumber = 0
 
     override fun open(filePath: String?) {
         val fileInputStream = FileInputStream(filePath!!)
         bufferedReader = InputStreamReader(fileInputStream, StandardCharsets.UTF_8).buffered()
+        columnNumber = 0
     }
 
     override fun close() {
@@ -23,21 +25,24 @@ class SourceManagerEfImpl: SourceManager {
 
     override fun getNextChar(): Char {
         currentChar = bufferedReader.readNextChar()
+        columnNumber++
 
-        if (incrementLineNumberOnNextRead) {
+        if (wentPastNewLine) {
             lineNumber++
+            columnNumber = 1
         }
 
         if (currentChar == '\r') {
             currentChar = bufferedReader.readNextChar()
         }
 
-        incrementLineNumberOnNextRead = currentChar == '\n'
+        wentPastNewLine = currentChar == '\n'
 
         return currentChar!!
     }
 
     override fun getLineNumber() = lineNumber
+    override fun getColumnNumber() = columnNumber
 
     @Suppress("NOTHING_TO_INLINE")
     private inline fun BufferedReader.readNextChar(): Char =

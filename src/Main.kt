@@ -2,7 +2,6 @@ import lexer.LexicalAnalyzer
 import lexer.LexicalAnalyzerImpl
 import lexer.LexicalException
 import sourcemanager.SourceManagerEfImpl
-import sourcemanager.SourceManagerImpl
 import token.Token
 import java.io.FileNotFoundException
 import java.io.IOException
@@ -21,7 +20,7 @@ fun main(args: Array<String>) {
             try {
                 token = lexer.getNextToken()
 
-                println("Token: (" + token.type.toString() + ", " + token.lexeme + ", " + token.lineNumber + ")")
+                println("(" + token.type + ", " + token.lexeme + ", " + token.lineNumber + ")")
             } catch (e: LexicalException) {
                 wereErrors = true
                 println(e.errorReport())

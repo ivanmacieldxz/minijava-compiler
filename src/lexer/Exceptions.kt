@@ -19,7 +19,7 @@ abstract class LexicalException(
     }
 }
 
-class InvalidCharacterException(
+class InvalidSymbolException(
     message: String,
     lexeme: String,
     lineNumber: Int,
@@ -59,14 +59,6 @@ class UnfinishedCharException(
 ): LexicalException(message, lexeme, lineNumber, columnNumber, line)
 
 class NewLineException(
-    message: String,
-    lexeme: String,
-    lineNumber: Int,
-    columnNumber: Int,
-    line: String
-): LexicalException(message, lexeme, lineNumber, columnNumber, line)
-
-class InvalidScapedCharException(
     message: String,
     lexeme: String,
     lineNumber: Int,
