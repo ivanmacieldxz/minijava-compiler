@@ -1,6 +1,6 @@
 package lexer
 
-import token.Token
+import utils.Token
 
 interface LexicalAnalyzer {
 

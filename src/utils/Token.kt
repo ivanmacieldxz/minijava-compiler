@@ -1,4 +1,4 @@
-package token
+package utils
 
 open class Token (
     val type: TokenType,

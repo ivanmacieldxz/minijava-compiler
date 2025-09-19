@@ -1,10 +1,10 @@
 package lexer
 
 import sourcemanager.SourceManager
-import token.Token
+import utils.Token
 import lexer.State.*
 import sourcemanager.SourceManager.END_OF_FILE
-import token.TokenType
+import utils.TokenType
 
 class LexicalAnalyzerImpl(
     private val sourceManager: SourceManager

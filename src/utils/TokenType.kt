@@ -1,6 +1,8 @@
-package token
+package utils
 
-enum class TokenType {
+import utils.SyntacticStackable
+
+enum class TokenType: SyntacticStackable {
 
     EOF,
     LEFT_BRACKET,
