@@ -1,0 +1,57 @@
+Producciones con problema de factorización:
+<ModificadorOpcional> --> abstract | static | final | e
+<Miembro> --> <Atributo> | <Metodo> | <Constructor>
+<Atributo> --> <Tipo> idMetVar ;
+<Metodo> --> <ModificadorOpcional> <TipoMetodo> idMetVar <ArgsFormales>
+         <BloqueOpcional> |
+<TipoMetodo> --> <Tipo> | void
+<Tipo> --> <TipoPrimitivo> | idClase
+<TipoPrimitivo> --> boolean | char | int
+Cuando ModificadorOpcional deriva en e, primeros de <Metodo> y primeros de <Atributo> (tipo) coinciden
+
+<Sentencia> --> <Asignacion> ;
+<Sentencia> --> <Llamada> ;
+<Asignacion> --> <Expresion>
+<Llamada> --> <Expresion>
+<Asignación> y <Llamada> derivan en lo mismo, entonces tienen los mismos primeros
+
+<Primario> --> <AccesoVar>
+<Primario> --> <LlamadaMetodo>
+<AccesoVar> --> idMetVar
+<LlamadaMetodo> --> idMetVar <ArgsActuales>
+Los primeros de <AccesoVar> y <LlamadaMetodo> son los mismos
+
+<Referencia> --> <Primario> <RestoReferencia>
+<RestoReferencia> --> <VarEncadenada> <RestoReferencia> | <MetodoEncadenado> <RestoReferencia> | e
+<VarEncadenada> --> . idMetVar
+<MetodoEncadenado> --> .idMetVar <ArgsActuales>
+Los primeros de <VarEncadenada> y <MetodoEncadenado> son los mismos
+
+-------------Soluciones:-------------
+<ModificadorOpcional> --> abstract | static | final | e
+<Miembro> --> <Tipo> <RestoDeclaracion> | void <RestoDeclaracionMetodo> | <Modificador> <TipoMetodo> <RestoDeclaracionMetodo> | <Constructor>
+<Tipo> --> boolean | char | int | idClase
+<RestoDeclaracion> --> <RestoDeclaracionAtributo> | <RestoDeclaracionMetodo>
+<RestoDeclaracionAtributo> --> idMetVar ;
+<RestoDeclaracionMetodo> --> idMetVar <ArgsFormales> <BloqueOpcional>
+<Modificador> --> abstract | static | final
+<TipoMetodo> --> <Tipo> | void
+
+Pero ahora tengo el problema:
+<RestoDeclaracion> --> <RestoDeclaracionAtributo> | <RestoDeclaracionMetodo>
+<RestoDeclaracionAtributo> --> idMetVar ;
+<RestoDeclaracionMetodo> --> idMetVar <ArgsFormales> <BloqueOpcional>
+coinciden en primeros.
+Solucion:
+<RestoDeclaracion> --> idMetVar <FinDeclaracion>
+<FinDeclaracion> --> ; | <ArgsFormales> <BloqueOpcional>
+-------------
+<Sentencia> --> <Expresion> ;
+-------------
+<Primario> --> idMetVar <RestoPrimario>
+<RestoPrimario> --> <ArgsActuales> | e
+-------------
+<Referencia> --> <Primario> <RestoReferencia>
+<RestoReferencia> --> <AccesoMetVar> <RestoReferencia> | e
+<AccesoMetVar> --> . idMetVar <RestoAccesoMetVar>
+<RestoAccesoMetVar> --> <ArgsActuales> | e

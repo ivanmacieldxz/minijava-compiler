@@ -1,0 +1,31 @@
+Producciones con problemas de recursión a izquierda:
+<ListaArgsFormales> --> <ArgFormal>
+<ListArgsFormales> --> <ListaArgsFormales>, <ArgFormal>
+Solución:
+    <ListaArgsFormales> --> <ArgFormal> <Resto>
+    <Resto> --> , <ListaArgsFormales> | e
+
+
+<ExpresionCompuesta> --> <ExpresionCompuesta> <OperadorBinario> <ExpresionBasica>
+<ExpresionCompuesta> --> <ExpresionBasica>
+Solución:
+<ExpresionCompuesta> --> <ExpresionBasica> <OperadorBinario> <ExpresionCompuesta>
+<ExpresionCompuesta> --> <ExpresionBasica>
+
+<Referencia> --> <Primario>
+<Referencia> --> <Referencia> <VarEncadenada>
+<Referencia> --> <Referencia> <MetodoEncadenado>
+Solución:
+<Referencia> --> <Primario> <RestoReferencia>
+<RestoReferencia> --> <VarEncadenada> <RestoReferencia> | 
+    <MetodoEncadenado> <RestoReferencia> | e
+
+----------------------Duda:-----------------------------------------------------
+Estas producciones:
+<Expresion> --> <ExpresionCompuesta> <OperadorAsignacion> <ExpresionCompuesta>
+<Expresion> -->  <ExpresionCompuesta>
+No deberían cambiar a:
+<Expresion> --> <AccesoVar> <OperadorAsignacion> <ExpresionCompuesta>
+<Expresion> -->  <ExpresionCompuesta>
+Porque sino se pueden armar expresiones de la forma:
+idMetVar + 2 += 2 + 5, y no tiene sentido
