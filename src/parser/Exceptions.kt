@@ -5,10 +5,10 @@ import utils.TokenType
 
 abstract class SyntacticException(
     val token: Token,
-    val expected: TokenType
+    val expected: Set<TokenType>
 ): Exception() {
     override fun toString(): String {
-        return "Error sintáctico en la línea ${token.lineNumber}: se esperaba $expected, pero se encontró ${token.type}." +
+        return "Error sintáctico en la línea ${token.lineNumber}: se esperaba ${expected.first()}, pero se encontró ${token.type}." +
                 "\n[Error:${token.lexeme}|${token.lineNumber}]"
     }
 }
@@ -18,17 +18,21 @@ abstract class SyntacticException(
  */
 class MismatchException(
     token: Token,
-    expected: TokenType
+    expected: Set<TokenType>
 ): SyntacticException(token, expected) {
-
+    override fun toString(): String {
+        return "Error sintáctico en la línea ${token.lineNumber}: se esperaba alguno de los siguientes:" +
+                " ${expected.joinToString(" | ")}, pero se encontró: ${token.type}." +
+                "\n[Error:${token.lexeme}|${token.lineNumber}]"
+    }
 }
+
 
 /**
  * Should be thrown when expecting a non-terminal and the current token is not in that NTs firsts
  */
-class NotInFirstsException(
+class UnexpectedTerminalException(
     token: Token,
-    expected: TokenType
-): SyntacticException(token, expected) {
+    expected: Set<TokenType>
+): SyntacticException(token, expected)
 
-}
