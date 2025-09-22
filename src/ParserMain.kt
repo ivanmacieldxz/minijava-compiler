@@ -1,5 +1,6 @@
 import lexer.LexicalAnalyzer
 import lexer.LexicalAnalyzerImpl
+import lexer.LexicalException
 import parser.SyntacticAnalyzerItrImpl
 import parser.SyntacticException
 import sourcemanager.SourceManager
@@ -17,6 +18,9 @@ fun main(args: Array<String>) {
         sourceManager.open("resources/synt/sinErrores.java")
 
         parser.start()
+    } catch (e: LexicalException) {
+        print(e.errorReport())
+        wereErrors = true
     } catch (e: SyntacticException) {
         print(e)
         wereErrors = true
