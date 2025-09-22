@@ -1,10 +1,4 @@
-class NombreDeClase {
-
-}
-abstract class NombreDeClase {
-
-}
-
-class NombreDeClase extends NombreDeClase2 {
-
+abstract class IdClase extends OtraClase {
+    abstract int methodName;
+    public Clase()
 }
