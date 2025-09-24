@@ -1,22 +1,20 @@
 <Inicial> --> <ListaClases> eof
 <ListaClases> --> <Clase> <ListaClases> | e
-<Clase> --> <ModificadorOpcional> class idClase <HerenciaOpcional>
-        { <ListaMiembros> }
+<Clase> --> <ModificadorOpcional> class idClase <HerenciaOpcional> { <ListaMiembros> }
 <ModificadorOpcional> --> abstract | static | final | e
 <HerenciaOpcional> --> extends idClase | e
 <ListaMiembros> --> <Miembro> <ListaMiembros> | e
 <Miembro> --> <Atributo> | <Metodo> | <Constructor>
 <Atributo> --> <Tipo> idMetVar ;
-<Metodo> --> <ModificadorOpcional> <TipoMetodo> idMetVar <ArgsFormales>
-         <BloqueOpcional>
+<Metodo> --> <ModificadorOpcional> <TipoMetodo> idMetVar <ArgsFormales> <BloqueOpcional>
 <Constructor> --> public idClase <ArgsFormales> <Bloque>
 <TipoMetodo> --> <Tipo> | void
 <Tipo> --> <TipoPrimitivo> | idClase
 <TipoPrimitivo> --> boolean | char | int
 <ArgsFormales> --> ( <ListaArgsFormalesOpcional> )
-<ListaArgsFormalesOpcional> --> <ListaArgsFormales>  | e
+<ListaArgsFormalesOpcional> --> <ListaArgsFormales> | e
 <ListaArgsFormales> --> <ArgFormal>
-<ListaArgsFormales> --> <ListaArgsFormales>, <ArgFormal>
+<ListaArgsFormales> --> <ListaArgsFormales> , <ArgFormal>
 <ArgFormal> --> <Tipo> idMetVar
 <BloqueOpcional> --> <Bloque> | ;
 <Bloque> --> { <ListaSentencias> }
@@ -30,15 +28,15 @@
 <Sentencia> --> <While>
 <Sentencia> --> <Bloque>
 <Asignacion> --> <Expresion>
-<Llamada> --> <Expresion>
+<llamada> --> <Expresion>
 <VarLocal> --> var idMetVar = <ExpresionCompuesta>
 <Return> --> return <ExpresionOpcional>
 <ExpresionOpcional> --> <Expresion> | e
-<If> --> if (<Expresion>) <Sentencia>
+<If> --> if ( <Expresion> ) <Sentencia>
 <If> --> if ( <Expresion> ) <Sentencia> else <Sentencia>
 <While> --> while ( <Expresion> ) <Sentencia>
 <Expresion> --> <ExpresionCompuesta> <OperadorAsignacion> <ExpresionCompuesta>
-<Expresion> -->  <ExpresionCompuesta>
+<Expresion> --> <ExpresionCompuesta>
 <OperadorAsignacion> --> =
 <ExpresionCompuesta> --> <ExpresionCompuesta> <OperadorBinario> <ExpresionBasica>
 <ExpresionCompuesta> --> <ExpresionBasica>
@@ -46,7 +44,7 @@
 <ExpresionBasica> --> <OperadorUnario> <Operando>
 <ExpresionBasica> --> <Operando>
 <OperadorUnario> --> + | ++ | - | -- | !
-<Operando> --> <Primitivo>
+<Operando> --> <Primitvo>
 <Operando> --> <Referencia>
 <Primitivo> --> true | false | intLiteral | charLiteral | null
 <Referencia> --> <Primario>
@@ -69,13 +67,13 @@
 <ListaExps> --> <Expresion>
 <ListaExps> --> <Expresion> , <ListaExps>
 <VarEncadenada> --> . idMetVar
-<MetodoEncadenado> --> .idMetVar <ArgsActuales>
+<MetodoEncadenado> --> . idMetVar <ArgsActuales>
 
--------------Gramática después de eliminar recursión a izquierda:-------------
+Gramática pos-eliminación de recursión a izquierda:
+
 <Inicial> --> <ListaClases> eof
 <ListaClases> --> <Clase> <ListaClases> | e
-<Clase> --> <ModificadorOpcional> class idClase <HerenciaOpcional>
-        { <ListaMiembros> }
+<Clase> --> <ModificadorOpcional> class idClase <HerenciaOpcional> { <ListaMiembros> }
 <ModificadorOpcional> --> abstract | static | final | e
 <HerenciaOpcional> --> extends idClase | e
 <ListaMiembros> --> <Miembro> <ListaMiembros> | e
@@ -87,7 +85,7 @@
 <Tipo> --> <TipoPrimitivo> | idClase
 <TipoPrimitivo> --> boolean | char | int
 <ArgsFormales> --> ( <ListaArgsFormalesOpcional> )
-<ListaArgsFormalesOpcional> --> <ListaArgsFormales>  | e
+<ListaArgsFormalesOpcional> --> <ListaArgsFormales> | e
 <ListaArgsFormales> --> <ArgFormal> <RestoListaArgsFormales>
 <RestoListaArgsFormales> --> , <ListaArgsFormales> | e
 <ArgFormal> --> <Tipo> idMetVar
@@ -107,14 +105,14 @@
 <VarLocal> --> var idMetVar = <ExpresionCompuesta>
 <Return> --> return <ExpresionOpcional>
 <ExpresionOpcional> --> <Expresion> | e
-<If> --> if (<Expresion>) <Sentencia>
+<If> --> if ( <Expresion> ) <Sentencia>
 <If> --> if ( <Expresion> ) <Sentencia> else <Sentencia>
 <While> --> while ( <Expresion> ) <Sentencia>
 <Expresion> --> <ExpresionCompuesta> <OperadorAsignacion> <ExpresionCompuesta>
-<Expresion> -->  <ExpresionCompuesta>
+<Expresion> --> <ExpresionCompuesta>
 <OperadorAsignacion> --> =
-<ExpresionCompuesta> --> <ExpresionBasica> <OperadorBinario> <ExpresionCompuesta>
-<ExpresionCompuesta> --> <ExpresionBasica>
+<ExpresionCompuesta> --> <ExpresionBasica> <RestoExpresionCompuesta>
+<RestoExpresionCompuesta> --> <OperadorBinario> <ExpresionBasica> <RestoExpresionCompuesta> | e
 <OperadorBinario> --> || | && | == | != | < | > | <= | >= | + | - | * | / | %
 <ExpresionBasica> --> <OperadorUnario> <Operando>
 <ExpresionBasica> --> <Operando>
@@ -141,77 +139,77 @@
 <ListaExps> --> <Expresion>
 <ListaExps> --> <Expresion> , <ListaExps>
 <VarEncadenada> --> . idMetVar
-<MetodoEncadenado> --> .idMetVar <ArgsActuales>
+<MetodoEncadenado> --> . idMetVar <ArgsActuales>
 
-------------------Gramática después de aplicar factorización:------------------
-- <Inicial> --> <ListaClases> eof
-- <ListaClases> --> <Clase> <ListaClases> | e
-- <Clase> --> <ModificadorOpcional> class idClase <HerenciaOpcional>
-        { <ListaMiembros> }
-- <ModificadorOpcional> --> <Modificador> | e
-- <HerenciaOpcional> --> extends idClase | e
-- <ListaMiembros> --> <Miembro> <ListaMiembros> | e
-- <Miembro> --> <Tipo> <RestoDeclaracionMiembro> |
-    void <RestoDeclaracionMiembro> |
-    <Modificador> <TipoMetodo> <RestoDeclaracionMiembro> |
+Gramática pos-eliminación de problemas de factorización:
+
+<Inicial> --> <ListaClases> eof
+<ListaClases> --> <Clase> <ListaClases> | e
+<Clase> --> <ModificadorOpcional> class idClase <HerenciaOpcional> { <ListaMiembros> }
+<ModificadorOpcional> --> abstract | static | final | e
+<HerenciaOpcional> --> extends idClase | e
+<ListaMiembros> --> <Miembro> <ListaMiembros> | e
+<Miembro> --> <Tipo> <RestoDeclaracionMiembro> |
+    void idMetVar <RestoDeclaracionMetodo> |
+    <Modificador> <TipoMetodo> idMetVar <RestoDeclaracionMetodo> |
     <Constructor>
-- <Constructor> --> public idClase <ArgsFormales> <Bloque>
-- <Tipo> --> boolean | char | int | idClase
-- <RestoDeclaracionMiembro> --> idMetVar <FinDeclaracionMiembro>
-- <FinDeclaracionMiembro> --> ; | <ArgsFormales> <BloqueOpcional>
-- <Modificador> --> abstract | static | final
-- <TipoMetodo> --> <Tipo> | void
-- <ArgsFormales> --> ( <ListaArgsFormalesOpcional> )
-- <ListaArgsFormalesOpcional> --> <ListaArgsFormales>  | e
-- <ListaArgsFormales> --> <ArgFormal> <RestoListaArgsFormales>
-- <RestoListaArgsFormales> --> , <ListaArgsFormales> | e
-- <ArgFormal> --> <Tipo> idMetVar
-- <BloqueOpcional> --> <Bloque> | ;
-- <Bloque> --> { <ListaSentencias> }
-- <ListaSentencias> --> <Sentencia> <ListaSentencias> | e
-- <Sentencia> --> ;
-- <Sentencia> --> <Expresion> ;
-- <Sentencia> --> <VarLocal> ;
-- <Sentencia> --> <Return> ;
-- <Sentencia> --> <If>
-- <Sentencia> --> <While>
-- <Sentencia> --> <Bloque>
-- <VarLocal> --> var idMetVar = <ExpresionCompuesta>
-- <Return> --> return <ExpresionOpcional>
-- <ExpresionOpcional> --> <Expresion> | e
-- <If> --> if (<Expresion>) <Sentencia> <ElseOpcional>
-- <ElseOpcional> --> else <Sentencia> | e
-- <While> --> while ( <Expresion> ) <Sentencia>
-- <Expresion> --> <ExpresionCompuesta> <RestoDeExpresion>
-- <RestoDeExpresion> -->  <OperadorAsignacion> <ExpresionCompuesta> | e
-- <OperadorAsignacion> --> =
-- <ExpresionCompuesta> --> <ExpresionBasica> <RestoDeExpresionCompuesta>
-- <RestoDeExpresionCompuesta> --> <OperadorBinario> <ExpresionCompuesta> | e
-- <OperadorBinario> --> || | && | == | != | < | > | <= | >= | + | - | * | / | %
-- <ExpresionBasica> --> <OperadorUnario> <Operando>
-- <ExpresionBasica> --> <Operando>
-- <OperadorUnario> --> + | ++ | - | -- | !
-- <Operando> --> <Primitivo>
-- <Operando> --> <Referencia>
-- <Primitivo> --> true | false | intLiteral | charLiteral | null
-- <Referencia> --> <Primario> <RestoReferencia>
-- <RestoReferencia> --> <AccesoMetVar> <RestoReferencia> | e
-- <Primario> --> this
-- <Primario> --> stringLiteral
-- <Primario> --> idMetVar <RestoLlamadaMetodoOAccesoVar>
-- <RestoLlamadaMetodoOAccesoVar> --> <ArgsActuales> | e
-- <Primario> --> <AccessoVar>
-- <Primario> --> <LlamadaConstructor>
-- <Primario> --> <LlamadaMetodo>
-- <Primario> --> <LlamadaMetodoEstatico>
-- <Primario> --> <ExpresionParentizada>
-- <AccesoVar> --> idMetVar
-- <LlamadaConstructor> --> new idClase <ArgsActuales>
-- <ExpresionParentizada> --> ( <Expresion> )
-- <LlamadaMetodoEstatico> --> idClase . idMetVar <ArgsActuales>
-- <ArgsActuales> --> ( <ListaExpsOpcional> )
-- <ListaExpsOpcional> --> <ListaExps> | e
-- <ListaExps> --> <Expresion> <RestoListaExps>
-- <RestoListaExps> --> , <ListaExps> | e
-- <AccesoMetVar> --> . idMetVar <RestoAccesoMetVar>
-- <RestoAccesoMetVar> --> <ArgsActuales> | e
+<Modificador> --> abstract | static | final
+<RestoDeclaracionMiembro> --> idMetVar <FinDeclaracionMiembro>
+<FinDeclaracionMiembro> --> ; | <RestoDeclaracionMetodo>
+<RestoDeclaracionMetodo> --> <ArgsFormales> <BloqueOpcional>
+<Constructor> --> public idClase <ArgsFormales> <Bloque>
+<TipoMetodo> --> <Tipo> | void
+<Tipo> --> <TipoPrimitivo> | idClase
+<TipoPrimitivo> --> boolean | char | int
+<ArgsFormales> --> ( <ListaArgsFormalesOpcional> )
+<ListaArgsFormalesOpcional> --> <ListaArgsFormales> | e
+<ListaArgsFormales> --> <ArgFormal> <RestoListaArgsFormales>
+<RestoListaArgsFormales> --> , <ListaArgsFormales> | e
+<ArgFormal> --> <Tipo> idMetVar
+<BloqueOpcional> --> <Bloque> | ;
+<Bloque> --> { <ListaSentencias> }
+<ListaSentencias> --> <Sentencia> <ListaSentencias> | e
+<Sentencia> --> ;
+<Sentencia> --> <Expresion> ;
+<Sentencia> --> <VarLocal> ;
+<Sentencia> --> <Return> ;
+<Sentencia> --> <If>
+<Sentencia> --> <While>
+<Sentencia> --> <Bloque>
+<VarLocal> --> var idMetVar = <ExpresionCompuesta>
+<Return> --> return <ExpresionOpcional>
+<ExpresionOpcional> --> <Expresion> | e
+<If> --> if ( <Expresion> ) <Sentencia> <ElseOpcional>
+<ElseOpcional> --> else <Sentencia> | e
+<While> --> while ( <Expresion> ) <Sentencia>
+<Expresion> --> <ExpresionCompuesta> <RestoExpresion>
+<RestoExpresion> --> <OperadorAsignacion> <ExpresionCompuesta> | e
+<OperadorAsignacion> --> =
+<ExpresionCompuesta> --> <ExpresionBasica> <RestoExpresionCompuesta>
+<RestoExpresionCompuesta> --> <OperadorBinario> <ExpresionBasica> <RestoExpresionCompuesta> | e
+<OperadorBinario> --> || | && | == | != | < | > | <= | >= | + | - | * | / | %
+<ExpresionBasica> --> <OperadorUnario> <Operando>
+<ExpresionBasica> --> <Operando>
+<OperadorUnario> --> + | ++ | - | -- | !
+<Operando> --> <Primitivo>
+<Operando> --> <Referencia>
+<Primitivo> --> true | false | intLiteral | charLiteral | null
+<Referencia> --> <Primario> <RestoReferencia>
+<RestoReferencia> --> <MetVarEncadenada> <RestoReferencia> | e
+<Primario> --> this
+<Primario> --> stringLiteral
+<Primario> --> <AccesoVarLlamadaMet>
+<Primario> --> <LlamadaConstructor>
+<Primario> --> <LlamadaMetodoEstatico>
+<Primario> --> <ExpresionParentizada>
+<AccesoVarLlamadaMet> --> idMetVar <RestoLlamadaMetOpcional>
+<RestoLlamadaMetOpcional> --> <ArgsActuales> | e
+<LlamadaConstructor> --> new idClase <ArgsActuales>
+<ExpresionParentizada> --> ( <Expresion> )
+<LlamadaMetodoEstatico> --> idClase . idMetVar <ArgsActuales>
+<ArgsActuales> --> ( <ListaExpsOpcional> )
+<ListaExpsOpcional> --> <ListaExps> | e
+<ListaExps> --> <Expresion> <RestoListaExps>
+<RestoListaExps> --> , <ListaExps> | e
+<MetVarEncadenada> --> . idMetVar <RestoDeEncadenamiento>
+<RestoDeEncadenamiento> --> <ArgsActuales> | e
