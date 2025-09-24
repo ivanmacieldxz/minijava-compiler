@@ -60,6 +60,7 @@ class LexicalAnalyzerImpl(
                             lexeme = ""
                             goToNextChar = false
                             token = Token.EOFToken
+                            Token.EOFToken.lineNumber = sourceManager.lineNumber
                         }
                         currentChar in LexicalAnalyzer.OPERATORS -> {
                             when (currentChar) {
@@ -117,7 +118,7 @@ class LexicalAnalyzerImpl(
                 }
                 READING_SINGLELINE_COMMENT -> {
                     when (currentChar) {
-                        '\n' -> {
+                        '\n', END_OF_FILE -> {
                             lexerState = IDLE
                         }
                     }
