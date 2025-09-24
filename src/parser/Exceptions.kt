@@ -1,14 +1,15 @@
 package parser
 
+import utils.SyntacticStackable
 import utils.Token
-import utils.TokenType
 
 abstract class SyntacticException(
     val token: Token,
-    val expected: Set<TokenType>
+    val expected: Set<SyntacticStackable>
 ): Exception() {
     override fun toString(): String {
-        return "Error sintáctico en la línea ${token.lineNumber}: se esperaba ${expected.first()}, pero se encontró ${token.type}." +
+        return "Error sintáctico en la línea ${token.lineNumber}: se esperaba alguno de los siguientes:" +
+                " ${expected.joinToString(" | ")}, pero se encontró: ${token.type}." +
                 "\n[Error:${token.lexeme}|${token.lineNumber}]"
     }
 }
@@ -18,14 +19,8 @@ abstract class SyntacticException(
  */
 class MismatchException(
     token: Token,
-    expected: Set<TokenType>
-): SyntacticException(token, expected) {
-    override fun toString(): String {
-        return "Error sintáctico en la línea ${token.lineNumber}: se esperaba alguno de los siguientes:" +
-                " ${expected.joinToString(" | ")}, pero se encontró: ${token.type}." +
-                "\n[Error:${token.lexeme}|${token.lineNumber}]"
-    }
-}
+    expected: Set<SyntacticStackable>
+): SyntacticException(token, expected)
 
 
 /**
@@ -33,6 +28,6 @@ class MismatchException(
  */
 class UnexpectedTerminalException(
     token: Token,
-    expected: Set<TokenType>
+    expected: Set<SyntacticStackable>
 ): SyntacticException(token, expected)
 
