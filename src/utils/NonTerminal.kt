@@ -3,177 +3,277 @@ package utils
 import utils.TokenType.*
 
 enum class NonTerminal(val first: Set<TokenType>): SyntacticStackable {
-    OPTIONAL_INHERITANCE(
-        first = setOf(EXTENDS)
-    ),
-    MODIFIER(
-        first = setOf(ABSTRACT, FINAL, STATIC)
-    ),
-    OPTIONAL_MODIFIER(
-        first = MODIFIER.first
-    ),
-    CLASS(
-        first = OPTIONAL_MODIFIER.first + TokenType.CLASS
-    ),
-    CLASS_LIST(
-        first = CLASS.first
-    ),
-    INITIAL(
-        first = CLASS.first
-    ),
-    TYPE(
-        first = setOf(BOOLEAN, CHAR, INT, CLASS_IDENTIFIER)
-    ),
-    CONSTRUCTOR(
-        first = setOf(PUBLIC)
-    ),
-    MEMBER(
-        first = TYPE.first + VOID + MODIFIER.first + CONSTRUCTOR.first
-    ),
-    MEMBER_LIST(
-        first = MEMBER.first
-    ),
-    METHOD_TYPE(
-        first = TYPE.first + VOID
-    ),
-    REST_OF_MEMBER_DECLARATION(
-        first = setOf(MET_VAR_IDENTIFIER)
-    ),
-    FORMAL_ARGUMENTS(
-        first = setOf(LEFT_BRACKET)
-    ),
-    BLOCK(
-        first = setOf(LEFT_CURLY_BRACKET)
-    ),
-    END_OF_MEMBER_DECLARATION(
-        first = setOf(SEMICOLON) + FORMAL_ARGUMENTS.first
-    ),
-    FORMAL_ARGUMENT(
-        first = TYPE.first
-    ),
-    FORMAL_ARGUMENTS_LIST(
-        first = FORMAL_ARGUMENT.first
-    ),
-    OPTIONAL_FORMAL_ARGUMENTS_LIST(
-        first = FORMAL_ARGUMENTS_LIST.first
-    ),
-    REST_OF_FORMAL_ARGUMENTS_LIST(
-        first = setOf(COMMA)
-    ),
-    OPTIONAL_BLOCK(
-        first = BLOCK.first + setOf(SEMICOLON)
-    ),
-    UNARY_OPERATOR(
-        first = setOf(ADDITION, INCREMENT, SUBSTRACTION, DECREMENT, NOT)
-    ),
-    PRIMITIVE(
-        first = setOf(TRUE, FALSE, INTEGER_LITERAL, CHAR_LITERAL, NULL)
-    ),
-    CONSTRUCTOR_CALL(
-        first = setOf(NEW)
-    ),
-    STATIC_METHOD_CALL(
-        first = setOf(CLASS_IDENTIFIER)
-    ),
-    PARENTHESIZED_EXPRESSION(
-        first = setOf(LEFT_BRACKET)
-    ),
-    VAR_ACCESS(
-        first = setOf(MET_VAR_IDENTIFIER)
-    ),
-    PRIMARY(
-        first = setOf(
-            THIS, STRING_LITERAL, MET_VAR_IDENTIFIER) +
-            VAR_ACCESS.first + CONSTRUCTOR_CALL.first +
-            STATIC_METHOD_CALL.first + PARENTHESIZED_EXPRESSION.first
 
+    MODIFIER(
+        setOf(ABSTRACT, STATIC, FINAL)
     ),
-    ACTUAL_ARGUMENTS(
-        first = setOf(LEFT_BRACKET)
+
+    // <ModificadorOpcional> --> abstract | static | final | e
+    OPTIONAL_MODIFIER(
+        MODIFIER.first
     ),
-    REST_OF_METHOD_CALL_OR_VAR_ACCESS(
-        first = ACTUAL_ARGUMENTS.first
+
+    // <Clase> --> <ModificadorOpcional> class idClase <HerenciaOpcional> { <ListaMiembros> }
+    CLASS(
+        OPTIONAL_MODIFIER.first + TokenType.CLASS
     ),
-    REFERENCE(
-        first = PRIMARY.first
+
+    // <ListaClases> --> <Clase> <ListaClases> | e
+    CLASS_LIST(
+        CLASS.first
     ),
-    OPERAND(
-        first = PRIMITIVE.first + REFERENCE.first
+
+    // <Inicial> --> <ListaClases> eof
+    INITIAL(
+        CLASS_LIST.first
     ),
-    BASIC_EXPRESSION(
-        first = UNARY_OPERATOR.first + OPERAND.first
+
+    // <HerenciaOpcional> --> extends idClase | e
+    OPTIONAL_INHERITANCE(
+        setOf(EXTENDS)
     ),
-    BINARY_OPERATOR(
-        first = setOf(
-            OR, AND, EQUALS, DIFFERENT, LESS_THAN, GREATER_THAN,
-            LESS_THAN_OR_EQUAL, GREATER_THAN_OR_EQUAL, ADDITION,
-            SUBSTRACTION, MULTIPLICATION, DIVISION, MODULUS
-        )
+
+    // <TipoPrimitivo> --> boolean | char | int
+    PRIMITIVE_TYPE(
+        setOf(BOOLEAN, CHAR, INT)
     ),
-    COMPOUND_EXPRESSION(
-        first = BASIC_EXPRESSION.first
+
+    // <Tipo> --> <TipoPrimitivo> | idClase
+    TYPE(
+        PRIMITIVE_TYPE.first + CLASS_IDENTIFIER
     ),
-    REST_OF_COMPOUND_EXPRESSION(
-        first = BINARY_OPERATOR.first
+
+    // <Miembro> --> <Tipo> <RestoDeclaracionMiembro> |
+    //    void <RestoDeclaracionMetodo> |
+    //    <Modificador> <TipoMetodo> <RestoDeclaracionMetodo> |
+    //    <Constructor>
+    MEMBER(
+        TYPE.first + VOID + OPTIONAL_MODIFIER.first + PUBLIC
     ),
-    EXPRESSION(
-        first = COMPOUND_EXPRESSION.first
+
+    // <ListaMiembros> --> <Miembro> <ListaMiembros> | e
+    MEMBER_LIST(
+        MEMBER.first
     ),
-    ASSIGNMENT_OPERATOR(
-        first = setOf(ASSIGNMENT)
+
+    // <RestoDeclaracionMiembro> --> idMetVar <FinDeclaracionMiembro>
+    REST_OF_MEMBER_DECLARATION(
+        setOf(MET_VAR_IDENTIFIER)
     ),
-    REST_OF_EXPRESSION(
-        first = ASSIGNMENT_OPERATOR.first
+
+    // <ArgsFormales> --> ( <ListaArgsFormalesOpcional> )
+    FORMAL_ARGUMENTS(
+        setOf(LEFT_BRACKET)
     ),
+
+    // <RestoDeclaracionMetodo> --> <ArgsFormales> <BloqueOpcional>
+    REST_OF_METHOD_DECLARATION(
+        FORMAL_ARGUMENTS.first
+    ),
+
+    // <FinDeclaracionMiembro> --> ; | <RestoDeclaracionMetodo>
+    END_OF_MEMBER_DECLARATION(
+        setOf(SEMICOLON) + REST_OF_METHOD_DECLARATION.first
+    ),
+
+    // <Constructor> --> public idClase <ArgsFormales> <Bloque>
+    CONSTRUCTOR(
+        setOf(PUBLIC)
+    ),
+
+    // <TipoMetodo> --> <Tipo> | void
+    METHOD_TYPE(
+        TYPE.first + VOID
+    ),
+
+    // <ArgFormal> --> <Tipo> idMetVar
+    FORMAL_ARGUMENT(
+        TYPE.first
+    ),
+
+    // <ListaArgsFormales> --> <ArgFormal> <RestoListaArgsFormales>
+    FORMAL_ARGUMENTS_LIST(
+        FORMAL_ARGUMENT.first
+    ),
+
+    // <ListaArgsFormalesOpcional> --> <ListaArgsFormales> | e
+    OPTIONAL_FORMAL_ARGUMENTS_LIST(
+        FORMAL_ARGUMENTS_LIST.first
+    ),
+
+    // <RestoListaArgsFormales> --> , <ListaArgsFormales> | e
+    REST_OF_FORMAL_ARGUMENTS_LIST(
+        setOf(COMMA)
+    ),
+
+    // <Bloque> --> { <ListaSentencias> }
+    BLOCK(
+        setOf(LEFT_CURLY_BRACKET)
+    ),
+
+    // <BloqueOpcional> --> <Bloque> | ;
+    OPTIONAL_BLOCK(
+        BLOCK.first + SEMICOLON
+    ),
+
+    // <VarLocal> --> var idMetVar = <ExpresionCompuesta>
     LOCAL_VARIABLE(
-        first = setOf(VAR)
+        setOf(VAR)
     ),
+
+    // <Return> --> return <ExpresionOpcional>
     RETURN(
-        first = setOf(TokenType.RETURN)
+        setOf(TokenType.RETURN)
     ),
-    OPTIONAL_EXPRESSION(
-        first = EXPRESSION.first
+
+    // <OperadorUnario> --> + | ++ | - | -- | !
+    UNARY_OPERATOR(
+        setOf(ADDITION, INCREMENT, SUBSTRACTION, DECREMENT, NOT)
     ),
+
+    // <Primitivo> --> true | false | intLiteral | charLiteral | null
+    PRIMITIVE(
+        setOf(TRUE, FALSE, INTEGER_LITERAL, CHAR_LITERAL, NULL)
+    ),
+
+    // <AccesoVarLlamadaMet> --> idMetVar <RestoLlamadaMetOpcional>
+    VAR_ACCESS_OR_MET_CALL(
+        setOf(MET_VAR_IDENTIFIER)
+    ),
+
+    // <LlamadaConstructor> --> new idClase <ArgsActuales>
+    CONSTRUCTOR_CALL(
+        setOf(NEW)
+    ),
+
+    // <ExpresionParentizada> --> ( <Expresion> )
+    PARENTHESIZED_EXPRESSION(
+        setOf(LEFT_BRACKET)
+    ),
+
+    // <LlamadaMetodoEstatico> --> idClase . idMetVar <ArgsActuales>
+    STATIC_METHOD_CALL(
+        setOf(CLASS_IDENTIFIER)
+    ),
+
+    // <Primario> --> this | stringLiteral | <AccesoVarLlamadaMet> | <LlamadaConstructor> | <LlamadaMetodoEstatico> | <ExpresionParentizada>
+    PRIMARY(
+        setOf(THIS, STRING_LITERAL) + VAR_ACCESS_OR_MET_CALL.first + CONSTRUCTOR_CALL.first + STATIC_METHOD_CALL.first + PARENTHESIZED_EXPRESSION.first
+    ),
+
+    // <Referencia> --> <Primario> <RestoReferencia>
+    REFERENCE(
+        PRIMARY.first
+    ),
+
+    // <Operando> --> <Primitivo> | <Referencia>
+    OPERAND(
+        PRIMITIVE.first + REFERENCE.first
+    ),
+
+    // <ExpresionBasica> --> <OperadorUnario> <Operando> | <Operando>
+    BASIC_EXPRESSION(
+        UNARY_OPERATOR.first + OPERAND.first
+    ),
+
+    // <ExpresionCompuesta> --> <ExpresionBasica> <RestoExpresionCompuesta>
+    COMPOUND_EXPRESSION(
+        BASIC_EXPRESSION.first
+    ),
+
+    // <Expresion> --> <ExpresionCompuesta> <RestoExpresion>
+    EXPRESSION(
+        COMPOUND_EXPRESSION.first
+    ),
+
+    // <If> --> if ( <Expresion> ) <Sentencia> <ElseOpcional>
     IF(
-        first = setOf(TokenType.IF)
+        setOf(TokenType.IF)
     ),
-    OPTIONAL_ELSE(
-        first = setOf(ELSE)
+
+    OPTIONAL_ELSE (
+        setOf(ELSE)
     ),
+
+    // <While> --> while ( <Expresion> ) <Sentencia>
     WHILE(
-        first = setOf(TokenType.WHILE)
+        setOf(TokenType.WHILE)
     ),
+
+    // <Sentencia> --> ; | <Expresion> ; | <VarLocal> ; | <Return> ; | <If> | <While> | <Bloque>
     SENTENCE(
-        first =
-            setOf(SEMICOLON) +
-            EXPRESSION.first +
-            LOCAL_VARIABLE.first +
-            RETURN.first +
-            IF.first +
-            WHILE.first +
-            BLOCK.first
+        setOf(SEMICOLON) + EXPRESSION.first + LOCAL_VARIABLE.first + RETURN.first + IF.first + WHILE.first + BLOCK.first
     ),
+
+    // <ListaSentencias> --> <Sentencia> <ListaSentencias> | e
     SENTENCE_LIST(
-        first = SENTENCE.first
+        SENTENCE.first
     ),
-    EXPRESSION_LIST(
-        first = EXPRESSION.first
-    )
-    ,
-    OPTIONAL_EXPRESSION_LIST(
-        first = EXPRESSION_LIST.first
+
+    // <ExpresionOpcional> --> <Expresion> | e
+    OPTIONAL_EXPRESSION(
+        EXPRESSION.first
     ),
-    REST_OF_EXPRESSION_LIST(
-        first = setOf(COMMA)
+
+    // <OperadorAsignacion> --> =
+    ASSIGNMENT_OPERATOR(
+        setOf(ASSIGNMENT)
     ),
-    MET_VAR_ACCESS(
-        first = setOf(DOT)
+
+    // <RestoExpresion> --> <OperadorAsignacion> <ExpresionCompuesta> | e
+    REST_OF_EXPRESSION(
+        ASSIGNMENT_OPERATOR.first
     ),
-    REST_OF_MET_VAR_ACCESS(
-        first = ACTUAL_ARGUMENTS.first
+
+    // <OperadorBinario> --> || | && | == | != | < | > | <= | >= | + | - | * | / | %
+    BINARY_OPERATOR(
+        setOf(OR, AND, EQUALS, DIFFERENT, LESS_THAN, GREATER_THAN, LESS_THAN_OR_EQUAL,
+            GREATER_THAN_OR_EQUAL, ADDITION, SUBSTRACTION, MULTIPLICATION, DIVISION, MODULUS)
     ),
+
+    // <RestoExpresionCompuesta> --> <OperadorBinario> <ExpresionBasica> <RestoExpresionCompuesta> | e
+    REST_OF_COMPOUND_EXPRESSION(
+        BINARY_OPERATOR.first
+    ),
+
+    // <MetVarEncadenada> --> .idMetVar <RestoDeEncadenamiento>
+    CHAINED_MET_VAR(
+        setOf(DOT)
+    ),
+
+    // <RestoReferencia> --> <MetVarEncadenada> <RestoReferencia> | e
     REST_OF_REFERENCE(
-        first = MET_VAR_ACCESS.first
+        CHAINED_MET_VAR.first
+    ),
+
+    // <ArgsActuales> --> ( <ListaExpsOpcional> )
+    ACTUAL_ARGUMENTS(
+        setOf(LEFT_BRACKET)
+    ),
+
+    // <RestoLlamadaMetOpcional> --> <ArgsActuales> | e
+    REST_OF_OPTIONAL_METHOD_CALL(
+        ACTUAL_ARGUMENTS.first
+    ),
+
+    // <ListaExps> --> <Expresion> <RestoListaExps>
+    EXPRESSION_LIST(
+        EXPRESSION.first
+    ),
+
+    // <ListaExpsOpcional> --> <ListaExps> | e
+    OPTIONAL_EXPRESSION_LIST(
+        EXPRESSION_LIST.first
+    ),
+
+    // <RestoListaExps> --> , <ListaExps> | e
+    REST_OF_EXPRESSION_LIST(
+        setOf(COMMA)
+    ),
+
+    // <RestoDeEncadenamiento> --> <ArgsActuales> | e
+    REST_OF_CHAINING(
+        ACTUAL_ARGUMENTS.first
     );
 
     companion object {
@@ -182,28 +282,77 @@ enum class NonTerminal(val first: Set<TokenType>): SyntacticStackable {
         }
 
         init {
-            follow[CLASS_LIST.ordinal] = setOf(EOF)
-            follow[CLASS.ordinal] = CLASS_LIST.first + follow[CLASS_LIST.ordinal]
-            follow[OPTIONAL_MODIFIER.ordinal] = setOf(TokenType.CLASS)
-            follow[OPTIONAL_INHERITANCE.ordinal] = setOf(LEFT_CURLY_BRACKET)
-            follow[MEMBER_LIST.ordinal] = setOf(RIGHT_CURLY_BRACKET)
-            follow[MEMBER.ordinal] = setOf(
-                PUBLIC, ABSTRACT, STATIC, FINAL, BOOLEAN, CHAR, INT, CLASS_IDENTIFIER, VOID, RIGHT_CURLY_BRACKET
-            )
-            follow[TYPE.ordinal] = setOf(MET_VAR_IDENTIFIER)
-            follow[REST_OF_MEMBER_DECLARATION.ordinal] = setOf(SEMICOLON, LEFT_BRACKET)
-            follow[MODIFIER.ordinal] = setOf(BOOLEAN, CHAR, INT, CLASS_IDENTIFIER, VOID)
-            follow[METHOD_TYPE.ordinal] = setOf(MET_VAR_IDENTIFIER)
-            follow[CONSTRUCTOR.ordinal] = setOf(
-                PUBLIC, ABSTRACT, STATIC, FINAL, BOOLEAN, CHAR, INT, CLASS_IDENTIFIER, VOID, RIGHT_CURLY_BRACKET
-            )
-            follow[FORMAL_ARGUMENTS.ordinal] = setOf(LEFT_CURLY_BRACKET, SEMICOLON)
-            follow[OPTIONAL_BLOCK.ordinal] = setOf(
-                PUBLIC, ABSTRACT, STATIC, FINAL, BOOLEAN, CHAR, INT, CLASS_IDENTIFIER, VOID, RIGHT_CURLY_BRACKET
-            )
-            follow[BLOCK.ordinal]
+
+            follow[CLASS_LIST] = setOf(EOF)
+            follow[CLASS] = CLASS_LIST.first + follow[CLASS_LIST]
+
+            follow[OPTIONAL_MODIFIER] = setOf(TokenType.CLASS)
+            follow[OPTIONAL_INHERITANCE] = setOf(LEFT_CURLY_BRACKET)
+            follow[MEMBER_LIST] = setOf(RIGHT_CURLY_BRACKET)
+
+            follow[OPTIONAL_FORMAL_ARGUMENTS_LIST] = setOf(RIGHT_BRACKET)
+            follow[FORMAL_ARGUMENTS_LIST] = follow[OPTIONAL_FORMAL_ARGUMENTS_LIST]
+            follow[REST_OF_FORMAL_ARGUMENTS_LIST] = follow[FORMAL_ARGUMENTS_LIST]
+
+            // <ListaArgsFormales> --> <ArgFormal> <RestoListaArgsFormales>
+            follow[FORMAL_ARGUMENT] = REST_OF_FORMAL_ARGUMENTS_LIST.first + follow[REST_OF_FORMAL_ARGUMENTS_LIST]
+
+            // <ArgFormal> --> <Tipo> idMetVar
+            // <Miembro> --> <Tipo> <RestoDeclaracionMiembro>
+            follow[TYPE] = setOf(MET_VAR_IDENTIFIER) + REST_OF_MEMBER_DECLARATION.first
+            follow[PRIMITIVE_TYPE] = follow[TYPE]
+
+            // <Bloque> --> { <ListaSentencias> }
+            follow[SENTENCE_LIST] = setOf(RIGHT_CURLY_BRACKET)
+            follow[SENTENCE] = SENTENCE_LIST.first + follow[SENTENCE_LIST]
+            follow[BLOCK] = follow[SENTENCE] + follow[OPTIONAL_BLOCK]
+
+            // <Sentencia> --> ...
+            follow[IF] = follow[SENTENCE]
+            follow[OPTIONAL_ELSE] = follow[IF]
+            follow[RETURN] = setOf(SEMICOLON)
+            follow[LOCAL_VARIABLE] = setOf(SEMICOLON)
+            follow[OPTIONAL_EXPRESSION] = follow[RETURN]
+
+            // <Expresion> y relacionados
+            follow[EXPRESSION_LIST] = setOf(RIGHT_BRACKET) // De <ListaExpsOpcional>
+            follow[REST_OF_EXPRESSION_LIST] = follow[EXPRESSION_LIST]
+            follow[EXPRESSION] = setOf(SEMICOLON, RIGHT_BRACKET) + REST_OF_EXPRESSION_LIST.first + follow[REST_OF_EXPRESSION_LIST] + follow[OPTIONAL_EXPRESSION]
+            follow[REST_OF_EXPRESSION] = follow[EXPRESSION]
+            follow[ASSIGNMENT_OPERATOR] = COMPOUND_EXPRESSION.first
+            follow[COMPOUND_EXPRESSION] = REST_OF_EXPRESSION.first + follow[REST_OF_EXPRESSION] + follow[LOCAL_VARIABLE]
+            follow[REST_OF_COMPOUND_EXPRESSION] = follow[COMPOUND_EXPRESSION]
+            follow[BINARY_OPERATOR] = BASIC_EXPRESSION.first
+            follow[BASIC_EXPRESSION] = REST_OF_COMPOUND_EXPRESSION.first + follow[REST_OF_COMPOUND_EXPRESSION]
+            follow[UNARY_OPERATOR] = OPERAND.first
+            follow[OPERAND] = follow[BASIC_EXPRESSION]
+            follow[PRIMITIVE] = follow[OPERAND]
+
+            // <Referencia> y relacionados
+            follow[REFERENCE] = follow[OPERAND]
+            follow[REST_OF_REFERENCE] = follow[REFERENCE]
+            follow[PRIMARY] = REST_OF_REFERENCE.first + follow[REST_OF_REFERENCE]
+            follow[VAR_ACCESS_OR_MET_CALL] = follow[PRIMARY]
+            follow[CONSTRUCTOR_CALL] = follow[PRIMARY]
+            follow[STATIC_METHOD_CALL] = follow[PRIMARY]
+            follow[PARENTHESIZED_EXPRESSION] = follow[PRIMARY]
+            follow[REST_OF_OPTIONAL_METHOD_CALL] = follow[VAR_ACCESS_OR_MET_CALL]
+            follow[CHAINED_MET_VAR] = REST_OF_REFERENCE.first + follow[REST_OF_REFERENCE]
+            follow[REST_OF_CHAINING] = follow[CHAINED_MET_VAR]
+
+            // <ArgsActuales> y relacionados
+            follow[ACTUAL_ARGUMENTS] = follow[REST_OF_CHAINING] + follow[REST_OF_OPTIONAL_METHOD_CALL] + follow[CONSTRUCTOR_CALL] + follow[STATIC_METHOD_CALL]
+            follow[OPTIONAL_EXPRESSION_LIST] = setOf(RIGHT_BRACKET)
+            follow[FORMAL_ARGUMENTS] = OPTIONAL_BLOCK.first + follow[REST_OF_METHOD_DECLARATION] + BLOCK.first + follow[CONSTRUCTOR]
         }
 
     }
 
 }
+
+private operator fun Array<Set<TokenType>>.set(index: NonTerminal, value: Set<TokenType>) {
+    this[index.ordinal] = value
+}
+
+private operator fun Array<Set<TokenType>>.get(nonTerminal: NonTerminal) =
+    this[nonTerminal.ordinal]
