@@ -34,8 +34,7 @@ class SyntacticAnalyzerItrImpl(
                                 expectedElementsStack.addFirst(NonTerminal.CLASS_LIST)
                                 expectedElementsStack.addFirst(NonTerminal.CLASS)
                             } else if (currentToken.inNexts(currentStackElement).not()) {
-                                //TODO: comportamiento para cuando el token actual no está en los siguientes
-//                                throw UnexpectedTerminalException(currentToken, follow[currentStackElement])
+                                throwUnexpectedTerminalException(currentStackElement)
                             }
                         }
 
@@ -53,18 +52,18 @@ class SyntacticAnalyzerItrImpl(
                             if (currentToken.inFirsts(currentStackElement)) {
                                 expectedElementsStack.addFirst(NonTerminal.MODIFIER)
                             } else if (currentToken.inNexts(currentStackElement).not()) {
-                                //TODO: comportamiento para cuando el token actual no está en los siguientes
-//                                throw UnexpectedTerminalException(currentToken, follow[currentStackElement])
+                                throwUnexpectedTerminalException(currentStackElement)
                             }
                         }
 
                         NonTerminal.MODIFIER -> {
-                            matchAny(currentStackElement)
+                            matchAnyInFirst(currentStackElement)
                         }
 
                         NonTerminal.OPTIONAL_INHERITANCE -> {
-                            if (tryMatchAny(currentStackElement)) {
-                                match(TokenType.CLASS_IDENTIFIER)
+                            if (currentToken.inFirsts(currentStackElement)) {
+                                expectedElementsStack.addFirst(TokenType.CLASS_IDENTIFIER)
+                                expectedElementsStack.addFirst(TokenType.EXTENDS)
                             }
                         }
 
@@ -73,8 +72,7 @@ class SyntacticAnalyzerItrImpl(
                                 expectedElementsStack.addFirst(NonTerminal.MEMBER_LIST)
                                 expectedElementsStack.addFirst(NonTerminal.MEMBER)
                             } else if (currentToken.inNexts(currentStackElement).not()) {
-                                //TODO: comportamiento para cuando el token actual no está en los siguientes
-//                                throw UnexpectedTerminalException(currentToken, follow[currentStackElement])
+                                throwUnexpectedTerminalException(currentStackElement)
                             }
                         }
 
@@ -85,52 +83,344 @@ class SyntacticAnalyzerItrImpl(
                             } else if (currentToken.inFirsts(NonTerminal.CONSTRUCTOR)) {
                                 expectedElementsStack.addFirst(NonTerminal.CONSTRUCTOR)
                             } else if (currentToken.inFirsts(NonTerminal.MODIFIER)) {
-                                expectedElementsStack.addFirst(NonTerminal.REST_OF_MEMBER_DECLARATION)
+                                expectedElementsStack.addFirst(NonTerminal.REST_OF_METHOD_DECLARATION)
+                                expectedElementsStack.addFirst(TokenType.MET_VAR_IDENTIFIER)
                                 expectedElementsStack.addFirst(NonTerminal.METHOD_TYPE)
                                 expectedElementsStack.addFirst(NonTerminal.MODIFIER)
                             } else {
-                                expectedElementsStack.addFirst(NonTerminal.REST_OF_MEMBER_DECLARATION)
-                                match(TokenType.VOID)
+                                expectedElementsStack.addFirst(NonTerminal.REST_OF_METHOD_DECLARATION)
+                                expectedElementsStack.addFirst(TokenType.MET_VAR_IDENTIFIER)
+                                expectedElementsStack.addFirst(TokenType.VOID)
                             }
                         }
 
                         NonTerminal.TYPE -> {
-                            matchAny(currentStackElement)
+                            matchAnyInFirst(currentStackElement)
+                        }
+
+                        NonTerminal.PRIMITIVE_TYPE -> {
+                            matchAnyInFirst(currentStackElement)
                         }
 
                         NonTerminal.REST_OF_MEMBER_DECLARATION -> {
                             expectedElementsStack.addFirst(NonTerminal.END_OF_MEMBER_DECLARATION)
-                            matchAny(currentStackElement)
+                            expectedElementsStack.addFirst(TokenType.MET_VAR_IDENTIFIER)
                         }
 
                         NonTerminal.END_OF_MEMBER_DECLARATION -> {
-                            //TODO: cambiar para que acepte también la otra rama, la de args_formales y bloque_opcional
-                            match(TokenType.SEMICOLON)
+                            if (currentToken.inFirsts(NonTerminal.REST_OF_METHOD_DECLARATION)) {
+                                expectedElementsStack.addFirst(NonTerminal.REST_OF_METHOD_DECLARATION)
+                            } else {
+                                expectedElementsStack.addFirst(TokenType.SEMICOLON)
+                            }
                         }
 
-                        NonTerminal.METHOD_TYPE -> {
-                            matchAny(currentStackElement)
-                        }
-
-                        NonTerminal.CONSTRUCTOR -> {
-                            matchAny(currentStackElement)
-                            match(TokenType.CLASS_IDENTIFIER)
-                            expectedElementsStack.addFirst(NonTerminal.BLOCK)
+                        NonTerminal.REST_OF_METHOD_DECLARATION -> {
+                            expectedElementsStack.addFirst(NonTerminal.OPTIONAL_BLOCK)
                             expectedElementsStack.addFirst(NonTerminal.FORMAL_ARGUMENTS)
                         }
 
+                        NonTerminal.METHOD_TYPE -> {
+                            if (currentToken.inFirsts(NonTerminal.TYPE)) {
+                                expectedElementsStack.addFirst(NonTerminal.TYPE)
+                            } else {
+                                expectedElementsStack.addFirst(TokenType.VOID)
+                            }
+                        }
+
+                        NonTerminal.CONSTRUCTOR -> {
+                            expectedElementsStack.addFirst(NonTerminal.BLOCK)
+                            expectedElementsStack.addFirst(NonTerminal.FORMAL_ARGUMENTS)
+                            expectedElementsStack.addFirst(TokenType.CLASS_IDENTIFIER)
+                            expectedElementsStack.addFirst(TokenType.PUBLIC)
+                        }
+
                         NonTerminal.FORMAL_ARGUMENTS -> {
-                            matchAny(currentStackElement)
+                            expectedElementsStack.addFirst(TokenType.RIGHT_BRACKET)
                             expectedElementsStack.addFirst(NonTerminal.OPTIONAL_FORMAL_ARGUMENTS_LIST)
+                            expectedElementsStack.addFirst(TokenType.LEFT_BRACKET)
                         }
 
                         NonTerminal.OPTIONAL_FORMAL_ARGUMENTS_LIST -> {
-                            match(TokenType.RIGHT_BRACKET)
+                            if (currentToken.inFirsts(currentStackElement)) {
+                                expectedElementsStack.addFirst(NonTerminal.FORMAL_ARGUMENTS_LIST)
+                            } else if (currentToken.inNexts(currentStackElement).not()) {
+                                throwUnexpectedTerminalException(currentStackElement)
+                            }
                         }
 
-                        else -> {
-
+                        NonTerminal.FORMAL_ARGUMENTS_LIST -> {
+                            expectedElementsStack.addFirst(NonTerminal.REST_OF_FORMAL_ARGUMENTS_LIST)
+                            expectedElementsStack.addFirst(NonTerminal.FORMAL_ARGUMENT)
                         }
+
+                        NonTerminal.REST_OF_FORMAL_ARGUMENTS_LIST -> {
+                            if (currentToken.inFirsts(currentStackElement)) {
+                                expectedElementsStack.addFirst(NonTerminal.FORMAL_ARGUMENTS_LIST)
+                                expectedElementsStack.addFirst(TokenType.COMMA)
+                            } else if (currentToken.inNexts(currentStackElement).not()) {
+                                throwUnexpectedTerminalException(currentStackElement)
+                            }
+                        }
+
+                        NonTerminal.FORMAL_ARGUMENT -> {
+                            expectedElementsStack.addFirst(TokenType.MET_VAR_IDENTIFIER)
+                            expectedElementsStack.addFirst(NonTerminal.TYPE)
+                        }
+
+                        NonTerminal.OPTIONAL_BLOCK -> {
+                            if (currentToken.inFirsts(NonTerminal.BLOCK)) {
+                                expectedElementsStack.addFirst(NonTerminal.BLOCK)
+                            } else {
+                                expectedElementsStack.addFirst(TokenType.SEMICOLON)
+                            }
+                        }
+
+                        NonTerminal.BLOCK -> {
+                            expectedElementsStack.addFirst(TokenType.RIGHT_CURLY_BRACKET)
+                            expectedElementsStack.addFirst(NonTerminal.SENTENCE_LIST)
+                            expectedElementsStack.addFirst(TokenType.LEFT_CURLY_BRACKET)
+                        }
+
+                        NonTerminal.SENTENCE_LIST -> {
+                            if (currentToken.inFirsts(currentStackElement)) {
+                                expectedElementsStack.addFirst(NonTerminal.SENTENCE_LIST)
+                                expectedElementsStack.addFirst(NonTerminal.SENTENCE)
+                            } else if (currentToken.inNexts(currentStackElement).not()) {
+                                throwUnexpectedTerminalException(currentStackElement)
+                            }
+                        }
+
+                        NonTerminal.SENTENCE -> {
+                            if (currentToken.inFirsts(NonTerminal.EXPRESSION)) {
+                                expectedElementsStack.addFirst(TokenType.SEMICOLON)
+                                expectedElementsStack.addFirst(NonTerminal.EXPRESSION)
+                            } else if (currentToken.inFirsts(NonTerminal.LOCAL_VARIABLE)) {
+                                expectedElementsStack.addFirst(TokenType.SEMICOLON)
+                                expectedElementsStack.addFirst(NonTerminal.LOCAL_VARIABLE)
+                            } else if (currentToken.inFirsts(NonTerminal.RETURN)) {
+                                expectedElementsStack.addFirst(TokenType.SEMICOLON)
+                                expectedElementsStack.addFirst(NonTerminal.RETURN)
+                            } else if (currentToken.inFirsts(NonTerminal.IF)) {
+                                expectedElementsStack.addFirst(NonTerminal.IF)
+                            } else if (currentToken.inFirsts(NonTerminal.WHILE)) {
+                                expectedElementsStack.addFirst(NonTerminal.WHILE)
+                            } else if (currentToken.inFirsts(NonTerminal.BLOCK)) {
+                                expectedElementsStack.addFirst(NonTerminal.BLOCK)
+                            } else {
+                                expectedElementsStack.addFirst(TokenType.SEMICOLON)
+                            }
+                        }
+
+                        NonTerminal.LOCAL_VARIABLE -> {
+                            expectedElementsStack.addFirst(NonTerminal.COMPOUND_EXPRESSION)
+                            expectedElementsStack.addFirst(TokenType.ASSIGNMENT)
+                            expectedElementsStack.addFirst(TokenType.MET_VAR_IDENTIFIER)
+                            expectedElementsStack.addFirst(TokenType.VAR)
+                        }
+
+                        NonTerminal.RETURN -> {
+                            expectedElementsStack.addFirst(NonTerminal.OPTIONAL_EXPRESSION)
+                            expectedElementsStack.addFirst(TokenType.RETURN)
+                        }
+
+                        NonTerminal.OPTIONAL_EXPRESSION -> {
+                            if (currentToken.inFirsts(NonTerminal.EXPRESSION)) {
+                                expectedElementsStack.addFirst(NonTerminal.EXPRESSION)
+                            } else if (currentToken.inNexts(currentStackElement).not()) {
+                                throwUnexpectedTerminalException(currentStackElement)
+                            }
+                        }
+
+                        NonTerminal.IF -> {
+                            expectedElementsStack.addFirst(NonTerminal.OPTIONAL_ELSE)
+                            expectedElementsStack.addFirst(NonTerminal.SENTENCE)
+                            expectedElementsStack.addFirst(TokenType.RIGHT_BRACKET)
+                            expectedElementsStack.addFirst(NonTerminal.EXPRESSION)
+                            expectedElementsStack.addFirst(TokenType.LEFT_BRACKET)
+                            expectedElementsStack.addFirst(TokenType.IF)
+                        }
+
+                        NonTerminal.OPTIONAL_ELSE -> {
+                            if (currentToken.inFirsts(currentStackElement)) {
+                                expectedElementsStack.addFirst(NonTerminal.SENTENCE)
+                                expectedElementsStack.addFirst(TokenType.ELSE)
+                            } else if (currentToken.inNexts(currentStackElement).not()) {
+                                throwUnexpectedTerminalException(currentStackElement)
+                            }
+                        }
+
+                        NonTerminal.WHILE -> {
+                            expectedElementsStack.addFirst(NonTerminal.SENTENCE)
+                            expectedElementsStack.addFirst(TokenType.RIGHT_BRACKET)
+                            expectedElementsStack.addFirst(NonTerminal.EXPRESSION)
+                            expectedElementsStack.addFirst(TokenType.LEFT_BRACKET)
+                            expectedElementsStack.addFirst(TokenType.WHILE)
+                        }
+
+                        NonTerminal.EXPRESSION -> {
+                            expectedElementsStack.addFirst(NonTerminal.REST_OF_EXPRESSION)
+                            expectedElementsStack.addFirst(NonTerminal.COMPOUND_EXPRESSION)
+                        }
+
+                        NonTerminal.REST_OF_EXPRESSION -> {
+                            if (currentToken.inFirsts(currentStackElement)) {
+                                expectedElementsStack.addFirst(NonTerminal.COMPOUND_EXPRESSION)
+                                expectedElementsStack.addFirst(NonTerminal.ASSIGNMENT_OPERATOR)
+                            } else if (currentToken.inNexts(currentStackElement).not()) {
+                                throwUnexpectedTerminalException(currentStackElement)
+                            }
+                        }
+
+                        NonTerminal.ASSIGNMENT_OPERATOR -> {
+                            expectedElementsStack.addFirst(TokenType.ASSIGNMENT)
+                        }
+
+                        NonTerminal.COMPOUND_EXPRESSION -> {
+                            expectedElementsStack.addFirst(NonTerminal.REST_OF_COMPOUND_EXPRESSION)
+                            expectedElementsStack.addFirst(NonTerminal.BASIC_EXPRESSION)
+                        }
+
+                        NonTerminal.REST_OF_COMPOUND_EXPRESSION -> {
+                            if (currentToken.inFirsts(currentStackElement)) {
+                                expectedElementsStack.addFirst(NonTerminal.REST_OF_COMPOUND_EXPRESSION)
+                                expectedElementsStack.addFirst(NonTerminal.BASIC_EXPRESSION)
+                                expectedElementsStack.addFirst(NonTerminal.BINARY_OPERATOR)
+                            } else if (currentToken.inNexts(currentStackElement).not()) {
+                                throwUnexpectedTerminalException(currentStackElement)
+                            }
+                        }
+
+                        NonTerminal.BINARY_OPERATOR -> {
+                            matchAnyInFirst(currentStackElement)
+                        }
+
+                        NonTerminal.BASIC_EXPRESSION -> {
+                            expectedElementsStack.addFirst(NonTerminal.OPERAND)
+
+                            if (currentToken.inFirsts(NonTerminal.UNARY_OPERATOR)) {
+                                expectedElementsStack.addFirst(NonTerminal.UNARY_OPERATOR)
+                            }
+                        }
+
+                        NonTerminal.UNARY_OPERATOR -> {
+                            matchAnyInFirst(currentStackElement)
+                        }
+
+                        NonTerminal.OPERAND -> {
+                            if (currentToken.inFirsts(NonTerminal.PRIMITIVE)) {
+                                expectedElementsStack.addFirst(NonTerminal.PRIMITIVE)
+                            } else {
+                                expectedElementsStack.addFirst(NonTerminal.REFERENCE)
+                            }
+                        }
+
+                        NonTerminal.PRIMITIVE -> {
+                            matchAnyInFirst(currentStackElement)
+                        }
+
+                        NonTerminal.REFERENCE -> {
+                            expectedElementsStack.addFirst(NonTerminal.REST_OF_REFERENCE)
+                            expectedElementsStack.addFirst(NonTerminal.PRIMARY)
+                        }
+
+                        NonTerminal.REST_OF_REFERENCE -> {
+                            if (currentToken.inFirsts(NonTerminal.CHAINED_MET_VAR)) {
+                                expectedElementsStack.addFirst(NonTerminal.REST_OF_REFERENCE)
+                                expectedElementsStack.addFirst(NonTerminal.CHAINED_MET_VAR)
+                            } else if (currentToken.inNexts(currentStackElement).not()) {
+                                throwUnexpectedTerminalException(currentStackElement)
+                            }
+                        }
+
+                        NonTerminal.PRIMARY -> {
+                            if (currentToken.inFirsts(NonTerminal.VAR_ACCESS_OR_MET_CALL)) {
+                                expectedElementsStack.addFirst(NonTerminal.VAR_ACCESS_OR_MET_CALL)
+                            } else if (currentToken.inFirsts(NonTerminal.CONSTRUCTOR_CALL)) {
+                                expectedElementsStack.addFirst(NonTerminal.CONSTRUCTOR_CALL)
+                            } else if (currentToken.inFirsts(NonTerminal.STATIC_METHOD_CALL)) {
+                                expectedElementsStack.addFirst(NonTerminal.STATIC_METHOD_CALL)
+                            } else if (currentToken.inFirsts(NonTerminal.PARENTHESIZED_EXPRESSION)) {
+                                expectedElementsStack.addFirst(NonTerminal.PARENTHESIZED_EXPRESSION)
+                            } else {
+                                matchAnyInFirst(currentStackElement)
+                            }
+                        }
+
+                        NonTerminal.VAR_ACCESS_OR_MET_CALL -> {
+                            expectedElementsStack.addFirst(NonTerminal.REST_OF_OPTIONAL_METHOD_CALL)
+                            expectedElementsStack.addFirst(TokenType.MET_VAR_IDENTIFIER)
+                        }
+
+                        NonTerminal.REST_OF_OPTIONAL_METHOD_CALL -> {
+                            if (currentToken.inFirsts(currentStackElement)) {
+                                expectedElementsStack.addFirst(NonTerminal.ACTUAL_ARGUMENTS)
+                            } else if (currentToken.inNexts(currentStackElement).not()) {
+                                throwUnexpectedTerminalException(currentStackElement)
+                            }
+                        }
+
+                        NonTerminal.CONSTRUCTOR_CALL -> {
+                            expectedElementsStack.addFirst(NonTerminal.ACTUAL_ARGUMENTS)
+                            expectedElementsStack.addFirst(TokenType.CLASS_IDENTIFIER)
+                            expectedElementsStack.addFirst(TokenType.NEW)
+                        }
+
+                        NonTerminal.PARENTHESIZED_EXPRESSION -> {
+                            expectedElementsStack.addFirst(TokenType.RIGHT_BRACKET)
+                            expectedElementsStack.addFirst(NonTerminal.EXPRESSION)
+                            expectedElementsStack.addFirst(TokenType.LEFT_BRACKET)
+                        }
+
+                        NonTerminal.STATIC_METHOD_CALL -> {
+                            expectedElementsStack.addFirst(NonTerminal.ACTUAL_ARGUMENTS)
+                            expectedElementsStack.addFirst(TokenType.MET_VAR_IDENTIFIER)
+                            expectedElementsStack.addFirst(TokenType.DOT)
+                            expectedElementsStack.addFirst(TokenType.CLASS_IDENTIFIER)
+                        }
+
+                        NonTerminal.ACTUAL_ARGUMENTS -> {
+                            expectedElementsStack.addFirst(TokenType.RIGHT_BRACKET)
+                            expectedElementsStack.addFirst(NonTerminal.OPTIONAL_EXPRESSION_LIST)
+                            expectedElementsStack.addFirst(TokenType.LEFT_BRACKET)
+                        }
+
+                        NonTerminal.OPTIONAL_EXPRESSION_LIST -> {
+                            if (currentToken.inFirsts(currentStackElement)) {
+                                expectedElementsStack.addFirst(NonTerminal.EXPRESSION_LIST)
+                            } else if (currentToken.inNexts(currentStackElement).not()) {
+                                throwUnexpectedTerminalException(currentStackElement)
+                            }
+                        }
+
+                        NonTerminal.EXPRESSION_LIST -> {
+                            expectedElementsStack.addFirst(NonTerminal.REST_OF_EXPRESSION_LIST)
+                            expectedElementsStack.addFirst(NonTerminal.EXPRESSION)
+                        }
+
+                        NonTerminal.REST_OF_EXPRESSION_LIST -> {
+                            if (currentToken.inFirsts(currentStackElement)) {
+                                expectedElementsStack.addFirst(NonTerminal.EXPRESSION_LIST)
+                                expectedElementsStack.addFirst(TokenType.COMMA)
+                            } else if (currentToken.inNexts(currentStackElement).not()) {
+                                throwUnexpectedTerminalException(currentStackElement)
+                            }
+                        }
+
+                        NonTerminal.CHAINED_MET_VAR -> {
+                            expectedElementsStack.addFirst(NonTerminal.REST_OF_CHAINING)
+                            expectedElementsStack.addFirst(TokenType.MET_VAR_IDENTIFIER)
+                            expectedElementsStack.addFirst(TokenType.DOT)
+                        }
+
+                        NonTerminal.REST_OF_CHAINING -> {
+                            if (currentToken.inFirsts(currentStackElement)) {
+                                expectedElementsStack.addFirst(NonTerminal.ACTUAL_ARGUMENTS)
+                            } else if (currentToken.inNexts(currentStackElement).not()) {
+                                throwUnexpectedTerminalException(currentStackElement)
+                            }
+                        }
+
                     }
                 }
                 is TokenType -> {
@@ -141,11 +431,7 @@ class SyntacticAnalyzerItrImpl(
             currentStackElement = expectedElementsStack.removeFirst()
         }
 
-        //está para el caso en que llegue eof cuando no se lo esperaba,
-        //el resto de not in firsts error deberían lanzarse dentro de cada situación específica
-        if (expectedElementsStack.isNotEmpty()) {
-            throw UnexpectedTerminalException(currentToken, setOf(currentStackElement as TokenType))
-        }
+
     }
 
     /**
@@ -166,7 +452,7 @@ class SyntacticAnalyzerItrImpl(
      * Should be used when void production is not an option.
      * @throws MismatchException when currentToken is not in nonTerminal's firsts
      */
-    private fun matchAny(nonTerminal: NonTerminal) {
+    private fun matchAnyInFirst(nonTerminal: NonTerminal) {
         if (currentToken.type in nonTerminal.first)
             match(currentToken.type)
         else
@@ -180,8 +466,31 @@ class SyntacticAnalyzerItrImpl(
      * Matches currentToken if it's in nonTerminal's firsts and returns true, returns false otherwise.
      * Should be used when void production is an option.
      */
-    private fun tryMatchAny(nonTerminal: NonTerminal): Boolean {
+    private fun tryMatchAnyInFirst(nonTerminal: NonTerminal): Boolean {
         val couldMatch = currentToken.type in nonTerminal.first
+
+        if (couldMatch)
+            match(currentToken.type)
+
+        return couldMatch
+    }
+
+    private fun matchAnyInNext(nonTerminal: NonTerminal) {
+        if (currentToken.type in NonTerminal.follow[nonTerminal])
+            match(currentToken.type)
+        else
+            throw MismatchException(
+                token = currentToken,
+                nonTerminal.first
+            )
+    }
+
+    /**
+     * Matches currentToken if it's in nonTerminal's firsts and returns true, returns false otherwise.
+     * Should be used when void production is an option.
+     */
+    private fun tryMatchAnyInNext(nonTerminal: NonTerminal): Boolean {
+        val couldMatch = currentToken.type in NonTerminal.follow[nonTerminal]
 
         if (couldMatch)
             match(currentToken.type)
@@ -197,4 +506,8 @@ class SyntacticAnalyzerItrImpl(
 
     private operator fun Array<Set<TokenType>>.get(nonTerminal: NonTerminal) =
         follow[nonTerminal.ordinal]
+
+    private fun throwUnexpectedTerminalException(currentNT: NonTerminal) {
+        throw UnexpectedTerminalException(currentToken, setOf(currentNT) + follow[currentNT])
+    }
 }
