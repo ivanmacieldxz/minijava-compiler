@@ -5,42 +5,42 @@ import utils.TokenType.*
 enum class NonTerminal(val first: Set<TokenType>): SyntacticStackable {
 
     MODIFIER(
-        setOf(ABSTRACT, STATIC, FINAL)
+        setOf(ABSTRACT, STATIC, FINAL),
     ),
 
     // <ModificadorOpcional> --> abstract | static | final | e
     OPTIONAL_MODIFIER(
-        MODIFIER.first
+        MODIFIER.first,
     ),
 
     // <Clase> --> <ModificadorOpcional> class idClase <HerenciaOpcional> { <ListaMiembros> }
     CLASS(
-        OPTIONAL_MODIFIER.first + TokenType.CLASS
+        OPTIONAL_MODIFIER.first + TokenType.CLASS,
     ),
 
     // <ListaClases> --> <Clase> <ListaClases> | e
     CLASS_LIST(
-        CLASS.first
+        CLASS.first,
     ),
 
     // <Inicial> --> <ListaClases> eof
     INITIAL(
-        CLASS_LIST.first
+        CLASS_LIST.first,
     ),
 
     // <HerenciaOpcional> --> extends idClase | e
     OPTIONAL_INHERITANCE(
-        setOf(EXTENDS)
+        setOf(EXTENDS),
     ),
 
     // <TipoPrimitivo> --> boolean | char | int
     PRIMITIVE_TYPE(
-        setOf(BOOLEAN, CHAR, INT)
+        setOf(BOOLEAN, CHAR, INT),
     ),
 
     // <Tipo> --> <TipoPrimitivo> | idClase
     TYPE(
-        PRIMITIVE_TYPE.first + CLASS_IDENTIFIER
+        PRIMITIVE_TYPE.first + CLASS_IDENTIFIER,
     ),
 
     // <Miembro> --> <Tipo> <RestoDeclaracionMiembro> |
@@ -48,27 +48,27 @@ enum class NonTerminal(val first: Set<TokenType>): SyntacticStackable {
     //    <Modificador> <TipoMetodo> <RestoDeclaracionMetodo> |
     //    <Constructor>
     MEMBER(
-        TYPE.first + VOID + OPTIONAL_MODIFIER.first + PUBLIC
+        TYPE.first + VOID + OPTIONAL_MODIFIER.first + PUBLIC,
     ),
 
     // <ListaMiembros> --> <Miembro> <ListaMiembros> | e
     MEMBER_LIST(
-        MEMBER.first
+        MEMBER.first,
     ),
 
     // <RestoDeclaracionMiembro> --> idMetVar <FinDeclaracionMiembro>
     REST_OF_MEMBER_DECLARATION(
-        setOf(MET_VAR_IDENTIFIER)
+        setOf(MET_VAR_IDENTIFIER),
     ),
 
     // <ArgsFormales> --> ( <ListaArgsFormalesOpcional> )
     FORMAL_ARGUMENTS(
-        setOf(LEFT_BRACKET)
+        setOf(LEFT_BRACKET),
     ),
 
     // <RestoDeclaracionMetodo> --> <ArgsFormales> <BloqueOpcional>
     REST_OF_METHOD_DECLARATION(
-        FORMAL_ARGUMENTS.first
+        FORMAL_ARGUMENTS.first,
     ),
 
     // <FinDeclaracionMiembro> --> ; | <RestoDeclaracionMetodo>

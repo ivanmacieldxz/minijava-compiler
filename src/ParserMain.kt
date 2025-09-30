@@ -15,8 +15,7 @@ fun main(args: Array<String>) {
     var wereErrors = false
 
     try {
-        sourceManager.open("resources/synt/sinErrores.java")
-
+        sourceManager.open(args[0])
         parser.start()
     } catch (e: LexicalException) {
         print(e.errorReport())
@@ -29,6 +28,7 @@ fun main(args: Array<String>) {
     }
 
     if (wereErrors.not()) {
+        println("Compilación Exitosa")
         println()
         println("[SinErrores]")
     }
