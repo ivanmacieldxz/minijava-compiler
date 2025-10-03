@@ -104,4 +104,10 @@ class UnfinishedMultilineCommentException(
     }
 }
 
-
+class InvalidUnicodeCharException(
+    message: String,
+    lexeme: String,
+    lineNumber: Int,
+    columnNumber: Int,
+    line: String
+): LexicalException(message, lexeme, lineNumber, columnNumber, line)

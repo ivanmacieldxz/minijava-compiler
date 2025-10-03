@@ -23,6 +23,8 @@ class LexicalAnalyzerImpl(
         lexerState = IDLE
         lexeme = ""
 
+        var unicodeCharNumbers = 0
+
         while (token == null) {
 
             if (lexerState != READING_MULTILINE_COMMENT && lexerState != CLOSING_MULTILINE_COMMENT && currentChar == '\n')
@@ -279,6 +281,68 @@ class LexicalAnalyzerImpl(
                                 currentLine.replace("\n", " "),
                             )
                         }
+                        'u' -> {
+                            lexerState = POTENTIALLY_READING_UNICODE_CHAR_CONSTANT
+                            unicodeCharNumbers = 0
+                        }
+                        else -> {
+                            lexerState = CLOSING_CHAR_CONSTANT
+                        }
+                    }
+                }
+                POTENTIALLY_READING_UNICODE_CHAR_CONSTANT -> {
+                    lexeme += currentChar
+                    when {
+                        currentChar == '\'' -> {
+                            when (unicodeCharNumbers) {
+                                4 -> buildToken(TokenType.CHAR_LITERAL)
+                                0 -> buildToken(TokenType.CHAR_LITERAL)
+                                else -> throw InvalidUnicodeCharException(
+                                    "literal char unicode mal formado, se esperaban 4 dígitos para unicode, " +
+                                            "pero se encontraron solo ${unicodeCharNumbers}, ",
+                                    lexeme,
+                                    sourceManager.lineNumber,
+                                    sourceManager.columnNumber,
+                                    currentLine
+                                )
+                            }
+                        }
+                        currentChar == END_OF_FILE -> {
+                            lexeme = lexeme.substring(0, lexeme.length - 1)
+                            throw UnfinishedCharException(
+                                "literal char mal formado, se esperaba un dígito o ', pero se encontró EOF.",
+                                lexeme,
+                                sourceManager.lineNumber,
+                                sourceManager.columnNumber,
+                                currentLine
+                            )
+                        }
+                        currentChar == '\n' -> {
+                            lexeme = lexeme.substring(0, lexeme.length - 1)
+                            throw NewLineException(
+                                "no se admiten saltos de línea dentro de un literal char.",
+                                lexeme,
+                                sourceManager.lineNumber,
+                                sourceManager.columnNumber,
+                                currentLine.replace("\n", " "),
+                            )
+                        }
+                        currentChar.isDigit() -> {
+                            lexerState = POTENTIALLY_READING_UNICODE_CHAR_CONSTANT
+                            unicodeCharNumbers++
+                            if (unicodeCharNumbers == 4)
+                                lexerState = CLOSING_CHAR_CONSTANT
+                        }
+                        currentChar.isLetter() -> {
+                            throw InvalidUnicodeCharException(
+                                "literal char unicode mal formado, se esperaba un dígito, pero se encontró " +
+                                        "un caracter, durante la formación del literal char unicode",
+                                lexeme,
+                                sourceManager.lineNumber,
+                                sourceManager.columnNumber,
+                                currentLine
+                            )
+                        }
                         else -> {
                             lexerState = CLOSING_CHAR_CONSTANT
                         }
@@ -311,8 +375,29 @@ class LexicalAnalyzerImpl(
                             )
                         }
                         else -> {
+                            if (unicodeCharNumbers == 4) {
+                                if (currentChar.isDigit())
+                                    throw InvalidUnicodeCharException(
+                                        "demasiados dígitos en literal char unicode, se esperaba ', " +
+                                                "pero se encontró un dígito",
+                                        lexeme,
+                                        sourceManager.lineNumber,
+                                        sourceManager.columnNumber,
+                                        currentLine
+                                    )
+                                else
+                                    throw InvalidUnicodeCharException(
+                                        "literal char unicode mal formado, se esperaba ', " +
+                                                "pero se encontró $currentChar",
+                                        lexeme,
+                                        sourceManager.lineNumber,
+                                        sourceManager.columnNumber,
+                                        currentLine
+                                    )
+                            }
+
                             throw MoreThanOneCharInLiteralException(
-                                "literal char mal formado: no se admite más de un caracter dentro de un literal char.",
+                                "literal char mal formado: no se admite más de un carácter dentro de un literal char.",
                                 lexeme,
                                 sourceManager.lineNumber,
                                 sourceManager.columnNumber,

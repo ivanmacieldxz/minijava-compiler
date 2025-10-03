@@ -1,3 +1,4 @@
+///[SinErrores]
 Clase
 Claseguion_
 ClaseMayus
