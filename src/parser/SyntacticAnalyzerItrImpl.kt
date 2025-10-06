@@ -1,6 +1,12 @@
 package parser
 
 import lexer.LexicalAnalyzer
+import semanticanalizer.Class
+import semanticanalizer.Constructor
+import semanticanalizer.Method
+import semanticanalizer.Modifiable
+import semanticanalizer.RepeatedDeclarationException
+import symbolTable
 import utils.NonTerminal
 import utils.NonTerminal.Companion.follow
 import utils.SyntacticStackable
@@ -46,6 +52,9 @@ class SyntacticAnalyzerItrImpl(
                             expectedElementsStack.addFirst(TokenType.CLASS_IDENTIFIER)
                             expectedElementsStack.addFirst(TokenType.CLASS)
                             expectedElementsStack.addFirst(NonTerminal.OPTIONAL_MODIFIER)
+
+                            symbolTable.currentClass = Class()
+                            symbolTable.currentContext = symbolTable.currentClass
                         }
 
                         NonTerminal.OPTIONAL_MODIFIER -> {
@@ -57,6 +66,8 @@ class SyntacticAnalyzerItrImpl(
                         }
 
                         NonTerminal.MODIFIER -> {
+                            (symbolTable.currentContext as Modifiable).modifier = currentToken
+
                             matchAnyInFirst(currentStackElement)
                         }
 
@@ -424,10 +435,46 @@ class SyntacticAnalyzerItrImpl(
                     }
                 }
                 is TokenType -> {
-                    match(currentStackElement)
+                    val prevToken = matchAndReturn(currentStackElement)
+
+                    when (prevToken.type) {
+                        TokenType.CLASS_IDENTIFIER -> {
+                            //si el contexto actual no tiene padre, es porque se está declarando la clase
+                            if (symbolTable.currentContext.parent == null)
+                                //si se está declarando una clase y no tiene nombre, es donde debo poner el token
+                                if (symbolTable.currentClass.token == null)
+                                    symbolTable.currentClass.token = prevToken
+                                //sino, se le está declarando la herencia
+                                else
+                                    symbolTable.currentClass.parentClass = prevToken
+                            //si tiene padre, estoy declarando un constructor
+                            else
+                                symbolTable.currentContext.token = prevToken
+                        }
+
+                        TokenType.RIGHT_CURLY_BRACKET -> {
+                            val currentContext = symbolTable.currentContext
+                            when (currentContext) {
+                                is Class -> {
+                                    symbolTable.classList.add(currentContext)
+                                }
+                                is Constructor -> {
+                                    (currentContext.parent as Class).constructor = currentContext
+                                    symbolTable.currentContext = currentContext.parent!!
+                                }
+                                is Method -> {
+                                    if ((currentContext.parent as Class).methodMap.putIfAbsent(currentContext.token!!.lexeme, currentContext) != null)
+                                        throw RepeatedDeclarationException("Ya existe un método con el " +
+                                                "mismo nombre en la clase.")
+                                    symbolTable.currentContext = currentContext.parent!!
+                                }
+                            }
+                        }
+
+                        else -> {}
+                    }
                 }
             }
-
             currentStackElement = expectedElementsStack.removeFirst()
         }
 
@@ -445,6 +492,16 @@ class SyntacticAnalyzerItrImpl(
                 expected = setOf(expectedElement)
             )
         currentToken = lexer.getNextToken()
+    }
+
+    private fun matchAndReturn(expectedElement: TokenType): Token {
+        if ((expectedElement == currentToken.type).not())
+            throw MismatchException(
+                token = currentToken,
+                expected = setOf(expectedElement)
+            )
+
+        return currentToken.also { currentToken = lexer.getNextToken() }
     }
 
     /**

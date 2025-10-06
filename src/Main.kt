@@ -1,0 +1,47 @@
+import lexer.LexicalAnalyzer
+import lexer.LexicalAnalyzerImpl
+import lexer.LexicalException
+import parser.SyntacticAnalyzerItrImpl
+import parser.SyntacticException
+import semanticanalizer.SemanticException
+import semanticanalizer.SymbolTable
+import sourcemanager.SourceManager
+import sourcemanager.SourceManagerEfImpl
+
+lateinit var symbolTable: SymbolTable
+
+fun main(args: Array<String>) {
+
+    val sourceManager: SourceManager = SourceManagerEfImpl()
+    val lexer: LexicalAnalyzer = LexicalAnalyzerImpl(sourceManager)
+    val parser = SyntacticAnalyzerItrImpl(lexer)
+    var wereErrors = false
+
+    symbolTable = SymbolTable()
+
+    try {
+        //TODO: descablear
+        sourceManager.open("resources/synt/sinErroresIntegrador.java")
+        parser.start()
+
+        print(symbolTable.classList)
+    } catch (e: LexicalException) {
+        print(e.errorReport())
+        wereErrors = true
+    } catch (e: SyntacticException) {
+        print(e)
+        wereErrors = true
+    } catch (e: SemanticException) {
+        print(e.message)
+        wereErrors = true
+    } finally {
+        sourceManager.close()
+    }
+
+    if (wereErrors.not()) {
+        println("Compilación Exitosa")
+        println()
+        println("[SinErrores]")
+    }
+
+}
