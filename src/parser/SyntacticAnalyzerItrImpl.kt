@@ -8,7 +8,6 @@ import semanticanalizer.Constructor
 import semanticanalizer.DummyClass
 import semanticanalizer.DummyContext
 import semanticanalizer.Method
-import semanticanalizer.RepeatedDeclarationException
 import symbolTable
 import utils.NonTerminal
 import utils.NonTerminal.Companion.follow
@@ -69,14 +68,7 @@ class SyntacticAnalyzerItrImpl(
                         }
 
                         NonTerminal.MODIFIER -> {
-                            when (symbolTable.currentContext) {
-                                is Class -> {
-                                    symbolTable.accumulator.classModifier = currentToken
-                                }
-                                is Method -> {
-                                    symbolTable.accumulator.methodModifier = currentToken
-                                }
-                            }
+                            symbolTable.accumulator.modifier = currentToken
 
                             matchAnyInFirst(currentStackElement)
                         }
@@ -456,42 +448,36 @@ class SyntacticAnalyzerItrImpl(
                                     symbolTable.accumulator.className = prevToken
                                 }
                                 else -> {
-                                    if (symbolTable.accumulator.className.lexeme == prevToken.lexeme) {
-                                        if (symbolTable.accumulator.foundInheritance)
-                                            throw CircularInheritanceException("Herencia circular encontrada")
-                                    } else {
-                                        if (symbolTable.accumulator.foundInheritance)
-                                            symbolTable.accumulator.classParent = prevToken
-                                        else
-                                            throw BadlyNamedConstructorException("Constructor con nombre diferente que la clase en la que fue declarada")
+                                    if (symbolTable.accumulator.foundInheritance) {
+                                        symbolTable.accumulator.classParent = prevToken
                                     }
                                 }
                             }
                         }
 
                         TokenType.LEFT_CURLY_BRACKET -> {
-                            val smartCastedContext = symbolTable.currentContext
-                            when (symbolTable.currentContext) {
+                            when (val castedContext = symbolTable.currentContext) {
                                 is Class -> {
                                     symbolTable.currentClass.token = symbolTable.accumulator.className
-                                    symbolTable.currentClass.modifier = symbolTable.accumulator.classModifier
+                                    symbolTable.currentClass.modifier = symbolTable.accumulator.modifier
 
-                                    if (symbolTable.accumulator.classParent.isDummyToken().not())
-                                        symbolTable.currentClass.parent = symbolTable.accumulator.classParent
+                                    symbolTable.currentClass.parentClass = symbolTable.accumulator.classParent
 
-                                    symbolTable.classMap.put(prevToken, symbolTable.currentClass)
+                                    symbolTable.classMap[castedContext.token.lexeme] = symbolTable.currentClass
+                                    symbolTable.accumulator.foundInheritance = false
                                 }
                                 is Constructor -> {
-                                    smartCastedContext.token = smartCastedContext.parent
-                                    smartCastedContext.parentClass.constructor = smartCastedContext as Constructor
-                                    smartCastedContext.paramMap = symbolTable.accumulator.params
+                                    castedContext.token = castedContext.parent
+                                    castedContext.parentClass.constructor = castedContext
+                                    castedContext.paramMap = symbolTable.accumulator.params
                                 }
                                 is Method -> {
-                                    smartCastedContext.token = symbolTable.accumulator.methodName
-                                    smartCastedContext.parentClass.methodMap.put(
-                                        smartCastedContext.token.lexeme,
-                                        smartCastedContext as Method
-                                    )
+                                    castedContext.token = symbolTable.accumulator.methodName
+                                    castedContext.modifier = symbolTable.accumulator.modifier
+                                    castedContext.type = symbolTable.accumulator.methodType
+                                    castedContext.paramMap = symbolTable.accumulator.params
+
+                                    castedContext.parentClass.methodMap[castedContext.token.lexeme] = castedContext
                                 }
                             }
                         }
@@ -501,11 +487,16 @@ class SyntacticAnalyzerItrImpl(
                                 is Class -> {
                                     symbolTable.currentClass = DummyClass
                                     symbolTable.currentContext = DummyContext
+                                    symbolTable.accumulator.clear()
                                 }
                                 else -> {
                                     symbolTable.currentContext = symbolTable.currentClass
                                 }
                             }
+                        }
+
+                        TokenType.EXTENDS -> {
+                            symbolTable.accumulator.foundInheritance = true
                         }
 
                         else -> {}
