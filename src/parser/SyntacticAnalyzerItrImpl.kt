@@ -8,6 +8,7 @@ import semanticanalizer.Constructor
 import semanticanalizer.DummyClass
 import semanticanalizer.DummyContext
 import semanticanalizer.Method
+import semanticanalizer.RepeatedDeclarationException
 import symbolTable
 import utils.NonTerminal
 import utils.NonTerminal.Companion.follow
@@ -148,6 +149,9 @@ class SyntacticAnalyzerItrImpl(
                             expectedElementsStack.addFirst(NonTerminal.FORMAL_ARGUMENTS)
                             expectedElementsStack.addFirst(TokenType.CLASS_IDENTIFIER)
                             expectedElementsStack.addFirst(TokenType.PUBLIC)
+
+
+                            symbolTable.currentContext = Constructor(parentClass = symbolTable.currentClass)
                         }
 
                         NonTerminal.FORMAL_ARGUMENTS -> {
@@ -458,10 +462,15 @@ class SyntacticAnalyzerItrImpl(
                         TokenType.LEFT_CURLY_BRACKET -> {
                             when (val castedContext = symbolTable.currentContext) {
                                 is Class -> {
-                                    symbolTable.currentClass.token = symbolTable.accumulator.className
-                                    symbolTable.currentClass.modifier = symbolTable.accumulator.modifier
+                                    if (symbolTable.classMap.contains(castedContext.token.lexeme)) {
+                                        throw RepeatedDeclarationException("Ya hay una clase declarada con ese nombre")
+                                    }
 
-                                    symbolTable.currentClass.parentClass = symbolTable.accumulator.classParent
+                                    castedContext.token = symbolTable.accumulator.className
+                                    castedContext.modifier = symbolTable.accumulator.modifier
+
+                                    castedContext.parentClass = symbolTable.accumulator.classParent
+
 
                                     symbolTable.classMap[castedContext.token.lexeme] = symbolTable.currentClass
                                     symbolTable.accumulator.foundInheritance = false

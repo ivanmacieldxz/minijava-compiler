@@ -45,7 +45,7 @@ open class Class() : Modifiable {
     override var token: Token = DummyToken
     var constructor: Constructor? = null
     override var parent: Token = DummyToken
-        set(_) {println("Boludo")}
+        set(_) {println("Por acá no es")}
 
     var parentClass: Token = DummyToken
     var methodMap = mutableMapOf<String, Method>()
