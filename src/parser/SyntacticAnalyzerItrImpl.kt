@@ -1,10 +1,13 @@
 package parser
 
 import lexer.LexicalAnalyzer
+import semanticanalizer.BadlyNamedConstructorException
+import semanticanalizer.CircularInheritanceException
 import semanticanalizer.Class
 import semanticanalizer.Constructor
+import semanticanalizer.DummyClass
+import semanticanalizer.DummyContext
 import semanticanalizer.Method
-import semanticanalizer.Modifiable
 import semanticanalizer.RepeatedDeclarationException
 import symbolTable
 import utils.NonTerminal
@@ -66,12 +69,21 @@ class SyntacticAnalyzerItrImpl(
                         }
 
                         NonTerminal.MODIFIER -> {
-                            (symbolTable.currentContext as Modifiable).modifier = currentToken
+                            when (symbolTable.currentContext) {
+                                is Class -> {
+                                    symbolTable.accumulator.classModifier = currentToken
+                                }
+                                is Method -> {
+                                    symbolTable.accumulator.methodModifier = currentToken
+                                }
+                            }
 
                             matchAnyInFirst(currentStackElement)
                         }
 
                         NonTerminal.OPTIONAL_INHERITANCE -> {
+                            symbolTable.accumulator.foundInheritance = true
+
                             if (currentToken.inFirsts(currentStackElement)) {
                                 expectedElementsStack.addFirst(TokenType.CLASS_IDENTIFIER)
                                 expectedElementsStack.addFirst(TokenType.EXTENDS)
@@ -439,34 +451,59 @@ class SyntacticAnalyzerItrImpl(
 
                     when (prevToken.type) {
                         TokenType.CLASS_IDENTIFIER -> {
-                            //si el contexto actual no tiene padre, es porque se está declarando la clase
-                            if (symbolTable.currentContext.parent == null)
-                                //si se está declarando una clase y no tiene nombre, es donde debo poner el token
-                                if (symbolTable.currentClass.token == null)
-                                    symbolTable.currentClass.token = prevToken
-                                //sino, se le está declarando la herencia
-                                else
-                                    symbolTable.currentClass.parentClass = prevToken
-                            //si tiene padre, estoy declarando un constructor
-                            else
-                                symbolTable.currentContext.token = prevToken
+                            when (symbolTable.accumulator.className) {
+                                Token.DummyToken -> {
+                                    symbolTable.accumulator.className = prevToken
+                                }
+                                else -> {
+                                    if (symbolTable.accumulator.className.lexeme == prevToken.lexeme) {
+                                        if (symbolTable.accumulator.foundInheritance)
+                                            throw CircularInheritanceException("Herencia circular encontrada")
+                                    } else {
+                                        if (symbolTable.accumulator.foundInheritance)
+                                            symbolTable.accumulator.classParent = prevToken
+                                        else
+                                            throw BadlyNamedConstructorException("Constructor con nombre diferente que la clase en la que fue declarada")
+                                    }
+                                }
+                            }
+                        }
+
+                        TokenType.LEFT_CURLY_BRACKET -> {
+                            val smartCastedContext = symbolTable.currentContext
+                            when (symbolTable.currentContext) {
+                                is Class -> {
+                                    symbolTable.currentClass.token = symbolTable.accumulator.className
+                                    symbolTable.currentClass.modifier = symbolTable.accumulator.classModifier
+
+                                    if (symbolTable.accumulator.classParent.isDummyToken().not())
+                                        symbolTable.currentClass.parent = symbolTable.accumulator.classParent
+
+                                    symbolTable.classMap.put(prevToken, symbolTable.currentClass)
+                                }
+                                is Constructor -> {
+                                    smartCastedContext.token = smartCastedContext.parent
+                                    smartCastedContext.parentClass.constructor = smartCastedContext as Constructor
+                                    smartCastedContext.paramMap = symbolTable.accumulator.params
+                                }
+                                is Method -> {
+                                    smartCastedContext.token = symbolTable.accumulator.methodName
+                                    smartCastedContext.parentClass.methodMap.put(
+                                        smartCastedContext.token.lexeme,
+                                        smartCastedContext as Method
+                                    )
+                                }
+                            }
                         }
 
                         TokenType.RIGHT_CURLY_BRACKET -> {
-                            val currentContext = symbolTable.currentContext
-                            when (currentContext) {
+                            when (symbolTable.currentContext) {
                                 is Class -> {
-                                    symbolTable.classList.add(currentContext)
+                                    symbolTable.currentClass = DummyClass
+                                    symbolTable.currentContext = DummyContext
                                 }
-                                is Constructor -> {
-                                    (currentContext.parent as Class).constructor = currentContext
-                                    symbolTable.currentContext = currentContext.parent!!
-                                }
-                                is Method -> {
-                                    if ((currentContext.parent as Class).methodMap.putIfAbsent(currentContext.token!!.lexeme, currentContext) != null)
-                                        throw RepeatedDeclarationException("Ya existe un método con el " +
-                                                "mismo nombre en la clase.")
-                                    symbolTable.currentContext = currentContext.parent!!
+                                else -> {
+                                    symbolTable.currentContext = symbolTable.currentClass
                                 }
                             }
                         }

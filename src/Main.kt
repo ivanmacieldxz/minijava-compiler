@@ -24,7 +24,7 @@ fun main(args: Array<String>) {
         sourceManager.open("resources/synt/sinErroresIntegrador.java")
         parser.start()
 
-        print(symbolTable.classList)
+        print(symbolTable.classMap)
     } catch (e: LexicalException) {
         print(e.errorReport())
         wereErrors = true
