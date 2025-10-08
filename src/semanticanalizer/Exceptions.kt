@@ -7,3 +7,8 @@ class RepeatedDeclarationException(override val message: String): SemanticExcept
 class CircularInheritanceException(override val message: String): SemanticException(message)
 
 class BadlyNamedConstructorException(override val message: String): SemanticException(message)
+
+class MoreThanOneConstructorDeclarationException(override val message: String): SemanticException(message)
+
+class InvalidClassNameException(override val message: String): SemanticException(message)
+

@@ -6,6 +6,10 @@ import utils.Token.DummyToken
 
 class SymbolTable {
 
+    companion object Predefined {
+        val classes = setOf("String", "Object", "System")
+    }
+
     val classMap = mutableMapOf<String, Class>()
     var currentClass: Class = DummyClass
     var currentContext: Declarable = DummyContext

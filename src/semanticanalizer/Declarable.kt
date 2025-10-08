@@ -41,7 +41,7 @@ object DummyClass: Class() {}
 open class Class() : Modifiable {
 
     override var token: Token = DummyToken
-    var constructor: Constructor? = null
+    var constructor: Constructor = Constructor(parentClass = this)
 
     var parentClass: Token = DummyToken
     var methodMap = mutableMapOf<String, Method>()
@@ -61,7 +61,7 @@ open class Class() : Modifiable {
         if (parentClass != DummyToken)
             strRep += "extends ${parentClass.lexeme}\n"
 
-        if (constructor != null)
+        if (constructor.isDefaultConstructor().not())
             strRep += "Constructor: $constructor"
 
         strRep += "Métodos: $methodMap\nAtributos: $attributeMap\n"
@@ -83,6 +83,10 @@ class Constructor(
 
     override fun isWellDeclared() {
         TODO("Not yet implemented")
+    }
+
+    fun isDefaultConstructor(): Boolean {
+        return token == DummyToken
     }
 
 }
@@ -111,6 +115,10 @@ class Attribute(
 ) : Declarable, ClassMember, Typed {
 
     override var type: Token = DummyToken
+
+    override fun toString(): String {
+        return "$type $token"
+    }
 
     override fun isWellDeclared() {
         TODO("Not yet implemented")
