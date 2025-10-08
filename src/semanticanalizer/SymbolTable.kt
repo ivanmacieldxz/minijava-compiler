@@ -17,12 +17,11 @@ class SymbolTable {
         var foundInheritance = false
 
         var methodName: Token = DummyToken
-        var methodType: Token = DummyToken
-
         var attrName: Token = DummyToken
-        var attrType: Token = DummyToken
 
-        var params = mutableMapOf<String, Token>()
+        var memberType: Token = DummyToken
+
+        var params = mutableMapOf<String, FormalArgument>()
         var modifier: Token = DummyToken
 
         fun clear() {
@@ -31,12 +30,11 @@ class SymbolTable {
             foundInheritance = false
 
             methodName = DummyToken
-            methodType = DummyToken
+            memberType = DummyToken
 
             attrName = DummyToken
-            attrType = DummyToken
 
-            params = mutableMapOf<String, Token>()
+            params = mutableMapOf()
             modifier = DummyToken
         }
     }

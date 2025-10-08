@@ -1,12 +1,15 @@
 package parser
 
 import lexer.LexicalAnalyzer
+import semanticanalizer.Attribute
 import semanticanalizer.BadlyNamedConstructorException
-import semanticanalizer.CircularInheritanceException
+import semanticanalizer.Callable
 import semanticanalizer.Class
 import semanticanalizer.Constructor
+import semanticanalizer.Declarable
 import semanticanalizer.DummyClass
 import semanticanalizer.DummyContext
+import semanticanalizer.FormalArgument
 import semanticanalizer.Method
 import semanticanalizer.RepeatedDeclarationException
 import symbolTable
@@ -22,6 +25,8 @@ class SyntacticAnalyzerItrImpl(
 ): SyntacticAnalyzer {
     private var expectedElementsStack = ArrayDeque<SyntacticStackable>()
     private lateinit var currentToken: Token
+    
+    private val accumulator = symbolTable.accumulator
 
     override fun start() {
 
@@ -69,13 +74,13 @@ class SyntacticAnalyzerItrImpl(
                         }
 
                         NonTerminal.MODIFIER -> {
-                            symbolTable.accumulator.modifier = currentToken
+                            accumulator.modifier = currentToken
 
                             matchAnyInFirst(currentStackElement)
                         }
 
                         NonTerminal.OPTIONAL_INHERITANCE -> {
-                            symbolTable.accumulator.foundInheritance = true
+                            accumulator.foundInheritance = true
 
                             if (currentToken.inFirsts(currentStackElement)) {
                                 expectedElementsStack.addFirst(TokenType.CLASS_IDENTIFIER)
@@ -96,6 +101,8 @@ class SyntacticAnalyzerItrImpl(
                             if (currentToken.inFirsts(NonTerminal.TYPE)) {
                                 expectedElementsStack.addFirst(NonTerminal.REST_OF_MEMBER_DECLARATION)
                                 expectedElementsStack.addFirst(NonTerminal.TYPE)
+
+                                symbolTable.accumulator.memberType = currentToken
                             } else if (currentToken.inFirsts(NonTerminal.CONSTRUCTOR)) {
                                 expectedElementsStack.addFirst(NonTerminal.CONSTRUCTOR)
                             } else if (currentToken.inFirsts(NonTerminal.MODIFIER)) {
@@ -107,10 +114,26 @@ class SyntacticAnalyzerItrImpl(
                                 expectedElementsStack.addFirst(NonTerminal.REST_OF_METHOD_DECLARATION)
                                 expectedElementsStack.addFirst(TokenType.MET_VAR_IDENTIFIER)
                                 expectedElementsStack.addFirst(TokenType.VOID)
+
+                                //TODO: verificar el contexto cuando encuentre idmetvar, puede ser que ya tenga armado
+                                // que es este caso
+                                // si es clase, entonces no pude determinar aún si es met o atr
+                                // puede pasar que sea parámetro también, que es el caso que considerás por ahora
+                                symbolTable.currentContext = Method(
+                                    parentClass = symbolTable.currentClass
+                                ).apply {
+                                    this.type = currentToken
+                                }
                             }
                         }
 
                         NonTerminal.TYPE -> {
+                            when (val currentContext = symbolTable.currentContext) {
+                                is FormalArgument/*, is Attribute*/ -> {
+                                    currentContext.type = currentToken
+                                }
+                            }
+
                             matchAnyInFirst(currentStackElement)
                         }
 
@@ -139,6 +162,12 @@ class SyntacticAnalyzerItrImpl(
                         NonTerminal.METHOD_TYPE -> {
                             if (currentToken.inFirsts(NonTerminal.TYPE)) {
                                 expectedElementsStack.addFirst(NonTerminal.TYPE)
+
+                                symbolTable.currentContext = Method(
+                                    parentClass = symbolTable.currentClass
+                                ).apply {
+                                    this.type = currentToken
+                                }
                             } else {
                                 expectedElementsStack.addFirst(TokenType.VOID)
                             }
@@ -183,6 +212,10 @@ class SyntacticAnalyzerItrImpl(
                         }
 
                         NonTerminal.FORMAL_ARGUMENT -> {
+                            symbolTable.currentContext = FormalArgument(
+                                member = symbolTable.currentContext as Callable
+                            )
+
                             expectedElementsStack.addFirst(TokenType.MET_VAR_IDENTIFIER)
                             expectedElementsStack.addFirst(NonTerminal.TYPE)
                         }
@@ -447,46 +480,124 @@ class SyntacticAnalyzerItrImpl(
 
                     when (prevToken.type) {
                         TokenType.CLASS_IDENTIFIER -> {
-                            when (symbolTable.accumulator.className) {
-                                Token.DummyToken -> {
-                                    symbolTable.accumulator.className = prevToken
-                                }
-                                else -> {
-                                    if (symbolTable.accumulator.foundInheritance) {
-                                        symbolTable.accumulator.classParent = prevToken
+                            when (val currentContext = symbolTable.currentContext) {
+                                is Class -> {
+                                    when (accumulator.className) {
+                                        Token.DummyToken -> {
+                                            accumulator.className = prevToken
+                                        }
+                                        else -> {
+                                            if (accumulator.foundInheritance) {
+                                                accumulator.classParent = prevToken
+                                            }
+                                        }
                                     }
+                                }
+                                is Constructor -> {
+                                    if (symbolTable.currentClass.token.lexeme != prevToken.lexeme)
+                                        throw BadlyNamedConstructorException(
+                                            "El nombre del constructor no coincide con el de la clase"
+                                        )
+
+                                    currentContext.token = prevToken
+                                }
+                                is FormalArgument -> {
+                                    currentContext.type = prevToken
                                 }
                             }
                         }
 
+                        TokenType.EXTENDS -> {
+                            accumulator.foundInheritance = true
+                        }
+
                         TokenType.LEFT_CURLY_BRACKET -> {
-                            when (val castedContext = symbolTable.currentContext) {
+                            when (val currentContext = symbolTable.currentContext) {
                                 is Class -> {
-                                    if (symbolTable.classMap.contains(castedContext.token.lexeme)) {
-                                        throw RepeatedDeclarationException("Ya hay una clase declarada con ese nombre")
+
+                                    currentContext.token = accumulator.className
+                                    currentContext.modifier = accumulator.modifier
+
+                                    currentContext.parentClass = accumulator.classParent
+
+                                    symbolTable.classMap.putIfAbsentOrError(
+                                        currentContext.token.lexeme,
+                                        symbolTable.currentClass
+                                    ) {
+                                        throw RepeatedDeclarationException(
+                                            "Ya hay una clase declarada con ese nombre"
+                                        )
                                     }
 
-                                    castedContext.token = symbolTable.accumulator.className
-                                    castedContext.modifier = symbolTable.accumulator.modifier
-
-                                    castedContext.parentClass = symbolTable.accumulator.classParent
-
-
-                                    symbolTable.classMap[castedContext.token.lexeme] = symbolTable.currentClass
-                                    symbolTable.accumulator.foundInheritance = false
+                                    accumulator.foundInheritance = false
                                 }
                                 is Constructor -> {
-                                    castedContext.token = castedContext.parent
-                                    castedContext.parentClass.constructor = castedContext
-                                    castedContext.paramMap = symbolTable.accumulator.params
+                                    currentContext.parentClass.constructor = currentContext
+                                    currentContext.paramMap = accumulator.params
+
+                                    accumulator.clear()
                                 }
                                 is Method -> {
-                                    castedContext.token = symbolTable.accumulator.methodName
-                                    castedContext.modifier = symbolTable.accumulator.modifier
-                                    castedContext.type = symbolTable.accumulator.methodType
-                                    castedContext.paramMap = symbolTable.accumulator.params
+                                    if (currentContext.type == Token.DummyToken)
+                                        currentContext.type = accumulator.memberType
 
-                                    castedContext.parentClass.methodMap[castedContext.token.lexeme] = castedContext
+                                    currentContext.paramMap = accumulator.params
+                                    currentContext.modifier = accumulator.modifier
+
+                                    symbolTable.currentClass.methodMap.putIfAbsentOrError(
+                                        currentContext.token.lexeme,
+                                        currentContext
+                                    ) {
+                                        throw RepeatedDeclarationException(
+                                            "Ya existe un método con ese nombre declarado en la clase actual"
+                                        )
+                                    }
+
+                                    accumulator.clear()
+                                }
+                            }
+                        }
+
+                        TokenType.MET_VAR_IDENTIFIER -> {
+                            when (val currentContext = symbolTable.currentContext) {
+                                is FormalArgument/*, is Attribute*/ -> {
+                                    currentContext.token = prevToken
+                                }
+                                is Method -> {
+                                    currentContext.token = prevToken
+                                }
+                                is Attribute -> {
+                                    currentContext.token = prevToken
+                                }
+                                is Class -> {
+                                    if (currentToken.type == TokenType.LEFT_BRACKET) {
+                                        symbolTable.currentContext = Method(
+                                            prevToken,
+                                            symbolTable.currentClass
+                                        )
+                                    } else if (currentToken.type == TokenType.SEMICOLON) {
+                                        symbolTable.currentContext = Attribute(
+                                            prevToken,
+                                            symbolTable.currentClass
+                                        )
+                                    }
+                                }
+                            }
+
+                        }
+
+                        TokenType.COMMA, TokenType.RIGHT_BRACKET -> {
+                            when (val currentContext = symbolTable.currentContext) {
+                                is FormalArgument -> {
+                                    accumulator.params.putIfAbsentOrError(
+                                        currentContext.token.lexeme,
+                                        currentContext
+                                    ) {
+                                        throw RepeatedDeclarationException(
+                                            "Ya hay un parámetro declarado con ese nombre en el contexto actual"
+                                        )
+                                    }
+                                    symbolTable.currentContext = currentContext.member
                                 }
                             }
                         }
@@ -496,16 +607,12 @@ class SyntacticAnalyzerItrImpl(
                                 is Class -> {
                                     symbolTable.currentClass = DummyClass
                                     symbolTable.currentContext = DummyContext
-                                    symbolTable.accumulator.clear()
+                                    accumulator.clear()
                                 }
                                 else -> {
                                     symbolTable.currentContext = symbolTable.currentClass
                                 }
                             }
-                        }
-
-                        TokenType.EXTENDS -> {
-                            symbolTable.accumulator.foundInheritance = true
                         }
 
                         else -> {}
@@ -603,5 +710,17 @@ class SyntacticAnalyzerItrImpl(
 
     private fun throwUnexpectedTerminalException(currentNT: NonTerminal) {
         throw UnexpectedTerminalException(currentToken, setOf(currentNT) + follow[currentNT])
+    }
+
+    private inline fun <DeclarableInstance: Declarable> MutableMap<String, DeclarableInstance>.putIfAbsentOrError(
+        key: String,
+        value: DeclarableInstance,
+        errorFunction: () -> Unit
+    ) {
+        if (this.contains(key)) {
+            errorFunction()
+        }
+
+        this[key] = value
     }
 }

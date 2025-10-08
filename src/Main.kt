@@ -12,12 +12,13 @@ lateinit var symbolTable: SymbolTable
 
 fun main(args: Array<String>) {
 
+    symbolTable = SymbolTable()
+
     val sourceManager: SourceManager = SourceManagerEfImpl()
     val lexer: LexicalAnalyzer = LexicalAnalyzerImpl(sourceManager)
     val parser = SyntacticAnalyzerItrImpl(lexer)
     var wereErrors = false
 
-    symbolTable = SymbolTable()
 
     try {
         //TODO: descablear
