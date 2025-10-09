@@ -22,10 +22,11 @@ fun main(args: Array<String>) {
 
     try {
         //TODO: descablear
-        sourceManager.open("resources/synt/sinErroresIntegrador.java")
+        sourceManager.open(args[0])
         parser.start()
 
         symbolTable.checkDeclarations()
+        symbolTable.consolidate()
 
         print(symbolTable.classMap)
     } catch (e: LexicalException) {
@@ -35,7 +36,7 @@ fun main(args: Array<String>) {
         print(e)
         wereErrors = true
     } catch (e: SemanticException) {
-        print(e.message)
+        print(e)
         wereErrors = true
     } finally {
         sourceManager.close()

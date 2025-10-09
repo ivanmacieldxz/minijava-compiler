@@ -15,6 +15,7 @@ import semanticanalizer.InvalidClassNameException
 import semanticanalizer.InvalidMethodDeclarationException
 import semanticanalizer.Method
 import semanticanalizer.MoreThanOneConstructorDeclarationException
+import semanticanalizer.Object
 import semanticanalizer.RepeatedDeclarationException
 import semanticanalizer.SymbolTable.Predefined
 import symbolTable
@@ -129,7 +130,7 @@ class SyntacticAnalyzerItrImpl(
                                 symbolTable.currentContext = Method(
                                     parentClass = symbolTable.currentClass
                                 ).apply {
-                                    this.type = currentToken
+                                    this.typeToken = currentToken
                                 }
                             }
                         }
@@ -137,7 +138,7 @@ class SyntacticAnalyzerItrImpl(
                         NonTerminal.TYPE -> {
                             when (val currentContext = symbolTable.currentContext) {
                                 is FormalArgument/*, is Attribute*/ -> {
-                                    currentContext.type = currentToken
+                                    currentContext.typeToken = currentToken
                                 }
                             }
 
@@ -173,7 +174,7 @@ class SyntacticAnalyzerItrImpl(
                                 expectedElementsStack.addFirst(TokenType.VOID)
                             }
 
-                            (symbolTable.currentContext as Method).type = currentToken
+                            (symbolTable.currentContext as Method).typeToken = currentToken
                         }
 
                         NonTerminal.CONSTRUCTOR -> {
@@ -493,7 +494,8 @@ class SyntacticAnalyzerItrImpl(
                                             if (accumulator.foundInheritance) {
                                                 if (accumulator.classParent.lexeme == prevToken.lexeme)
                                                     throw CircularInheritanceException(
-                                                        "Herencia circular detectada"
+                                                        "herencia circular detectada.",
+                                                        prevToken
                                                     )
 
                                                 accumulator.classParent = prevToken
@@ -504,13 +506,14 @@ class SyntacticAnalyzerItrImpl(
                                 is Constructor -> {
                                     if (symbolTable.currentClass.token.lexeme != prevToken.lexeme)
                                         throw BadlyNamedConstructorException(
-                                            "El nombre del constructor no coincide con el de la clase"
+                                            "el nombre del constructor no coincide con el de la clase",
+                                            prevToken
                                         )
 
                                     currentContext.token = prevToken
                                 }
                                 is FormalArgument -> {
-                                    currentContext.type = prevToken
+                                    currentContext.typeToken = prevToken
                                 }
                             }
                         }
@@ -525,12 +528,13 @@ class SyntacticAnalyzerItrImpl(
 
                                     currentContext.token = accumulator.className
                                     currentContext.modifier = accumulator.modifier
+                                    currentContext.parentClass = Object
+                                    currentContext.parentClassToken = accumulator.classParent
 
-                                    currentContext.parentClass = accumulator.classParent
-
-                                    if (currentContext.token.lexeme in Predefined.classes)
+                                    if (currentContext.token.lexeme in Predefined.classesNames)
                                         throw InvalidClassNameException(
-                                            "La clase ${currentContext.token.lexeme} es parte de las clases predefinidas"
+                                            "la clase ${currentContext.token.lexeme} es parte de las clases predefinidas",
+                                            currentContext.token
                                         )
 
                                     symbolTable.classMap.putIfAbsentOrError(
@@ -538,16 +542,19 @@ class SyntacticAnalyzerItrImpl(
                                         symbolTable.currentClass
                                     ) {
                                         throw RepeatedDeclarationException(
-                                            "Ya hay una clase declarada con ese nombre"
+                                            " la clase ${currentContext.token.lexeme} fue declarada previamente",
+                                            currentContext.token
                                         )
                                     }
 
+                                    accumulator.modifier = Token.DummyToken
                                     accumulator.foundInheritance = false
                                 }
                                 is Constructor -> {
                                     if (currentContext.parentClass.constructor.isDefaultConstructor().not())
                                         throw MoreThanOneConstructorDeclarationException(
-                                            "La clase actual ya tiene un constructor"
+                                            "la clase actual ya tiene un constructor.",
+                                            currentContext.token
                                         )
 
                                     currentContext.parentClass.constructor = currentContext
@@ -558,7 +565,8 @@ class SyntacticAnalyzerItrImpl(
                                 is Method -> {
                                     if (accumulator.modifier.type == TokenType.ABSTRACT)
                                         throw InvalidMethodDeclarationException(
-                                            "Un método abstracto no puede tener cuerpo"
+                                            "los métodos abstractos no pueden tener cuerpo.",
+                                            prevToken
                                         )
                                     addMethod()
                                 }
@@ -586,11 +594,12 @@ class SyntacticAnalyzerItrImpl(
                                                 prevToken,
                                                 symbolTable.currentClass
                                             ).also {
-                                                it.type = accumulator.memberType
+                                                it.typeToken = accumulator.memberType
                                             }
                                         ) {
                                             throw RepeatedDeclarationException(
-                                                "Ya existe un atributo con ese nombre en la clase"
+                                                "un atributo con el mismo nombre ya fue declarado anteriormente en la clase actual.",
+                                                prevToken
                                             )
                                         }
                                     }
@@ -607,7 +616,8 @@ class SyntacticAnalyzerItrImpl(
                                         currentContext
                                     ) {
                                         throw RepeatedDeclarationException(
-                                            "Ya hay un parámetro declarado con ese nombre en el contexto actual"
+                                            "ya hay un parámetro declarado con ese nombre en el contexto actual",
+                                            currentContext.token
                                         )
                                     }
                                     symbolTable.currentContext = currentContext.member
@@ -633,12 +643,14 @@ class SyntacticAnalyzerItrImpl(
                                 if (accumulator.modifier.type == TokenType.ABSTRACT) {
                                     if (symbolTable.currentClass.modifier.type != TokenType.ABSTRACT)
                                         throw InvalidMethodDeclarationException(
-                                            "Una clase concreta no puede tener métodos abstractos"
+                                            "declaración de método abstracto en clase concreta",
+                                            accumulator.modifier
                                         )
                                     else addMethod()
                                 } else
                                     throw InvalidMethodDeclarationException(
-                                        "Un método concreto no puede no tener cuerpo"
+                                        "declaración de método concreto sin cuerpo.",
+                                        prevToken
                                     )
 
                             }
@@ -657,8 +669,8 @@ class SyntacticAnalyzerItrImpl(
     private fun addMethod() {
         val currentContext = symbolTable.currentContext as Method
 
-        if (currentContext.type.isDummyToken())
-            currentContext.type = accumulator.memberType
+        if (currentContext.typeToken.isDummyToken())
+            currentContext.typeToken = accumulator.memberType
 
         currentContext.paramMap = accumulator.params
         currentContext.modifier = accumulator.modifier
@@ -668,7 +680,8 @@ class SyntacticAnalyzerItrImpl(
             currentContext
         ) {
             throw RepeatedDeclarationException(
-                "Ya existe un método con ese nombre declarado en la clase actual"
+                "un método con el mismo nombre fue declarado anteriormente en la clase actual.",
+                currentContext.token
             )
         }
 

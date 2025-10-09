@@ -7,17 +7,21 @@ import utils.Token.DummyToken
 class SymbolTable {
 
     companion object Predefined {
-        val classes = setOf("String", "Object", "System")
+        val classesNames = setOf("String", "Object", "System")
     }
 
-    val classMap = mutableMapOf<String, Class>()
+    val classMap = mutableMapOf<String, Class>(
+        "Object" to Object,
+        "System" to System,
+        "String" to StringClass
+    )
     var currentClass: Class = DummyClass
     var currentContext: Declarable = DummyContext
     val accumulator = Accumulator()
 
     class Accumulator {
         var className: Token = DummyToken
-        var classParent: Token = DummyToken
+        var classParent: Token = Object.token
         var foundInheritance = false
 
         var methodName: Token = DummyToken
@@ -30,7 +34,7 @@ class SymbolTable {
 
         fun clear() {
             className = DummyToken
-            classParent = DummyToken
+            classParent = Object.token
             foundInheritance = false
 
             methodName = DummyToken
@@ -50,7 +54,9 @@ class SymbolTable {
     }
 
     fun consolidate() {
-
+        classMap.values.forEach {
+            it.takeIf { it.isConsolidated.not() }?.consolidate()
+        }
     }
 
 }
