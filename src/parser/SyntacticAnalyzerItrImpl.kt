@@ -12,6 +12,7 @@ import semanticanalizer.DummyClass
 import semanticanalizer.DummyContext
 import semanticanalizer.FormalArgument
 import semanticanalizer.InvalidClassNameException
+import semanticanalizer.InvalidMethodDeclarationException
 import semanticanalizer.Method
 import semanticanalizer.MoreThanOneConstructorDeclarationException
 import semanticanalizer.RepeatedDeclarationException
@@ -555,22 +556,11 @@ class SyntacticAnalyzerItrImpl(
                                     accumulator.clear()
                                 }
                                 is Method -> {
-                                    if (currentContext.type.isDummyToken())
-                                        currentContext.type = accumulator.memberType
-
-                                    currentContext.paramMap = accumulator.params
-                                    currentContext.modifier = accumulator.modifier
-
-                                    symbolTable.currentClass.methodMap.putIfAbsentOrError(
-                                        currentContext.token.lexeme,
-                                        currentContext
-                                    ) {
-                                        throw RepeatedDeclarationException(
-                                            "Ya existe un método con ese nombre declarado en la clase actual"
+                                    if (accumulator.modifier.type == TokenType.ABSTRACT)
+                                        throw InvalidMethodDeclarationException(
+                                            "Un método abstracto no puede tener cuerpo"
                                         )
-                                    }
-
-                                    accumulator.clear()
+                                    addMethod()
                                 }
                             }
                         }
@@ -638,6 +628,22 @@ class SyntacticAnalyzerItrImpl(
                             }
                         }
 
+                        TokenType.SEMICOLON -> {
+                            if (symbolTable.currentContext is Method) {
+                                if (accumulator.modifier.type == TokenType.ABSTRACT) {
+                                    if (symbolTable.currentClass.modifier.type != TokenType.ABSTRACT)
+                                        throw InvalidMethodDeclarationException(
+                                            "Una clase concreta no puede tener métodos abstractos"
+                                        )
+                                    else addMethod()
+                                } else
+                                    throw InvalidMethodDeclarationException(
+                                        "Un método concreto no puede no tener cuerpo"
+                                    )
+
+                            }
+                        }
+
                         else -> {}
                     }
                 }
@@ -646,6 +652,27 @@ class SyntacticAnalyzerItrImpl(
         }
 
 
+    }
+
+    private fun addMethod() {
+        val currentContext = symbolTable.currentContext as Method
+
+        if (currentContext.type.isDummyToken())
+            currentContext.type = accumulator.memberType
+
+        currentContext.paramMap = accumulator.params
+        currentContext.modifier = accumulator.modifier
+
+        symbolTable.currentClass.methodMap.putIfAbsentOrError(
+            currentContext.token.lexeme,
+            currentContext
+        ) {
+            throw RepeatedDeclarationException(
+                "Ya existe un método con ese nombre declarado en la clase actual"
+            )
+        }
+
+        accumulator.clear()
     }
 
     /**
