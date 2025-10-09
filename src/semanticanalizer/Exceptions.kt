@@ -12,3 +12,5 @@ class MoreThanOneConstructorDeclarationException(override val message: String): 
 
 class InvalidClassNameException(override val message: String): SemanticException(message)
 
+class UndeclaredClassException(override val message: String): SemanticException(message)
+

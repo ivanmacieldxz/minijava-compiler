@@ -43,8 +43,10 @@ class SymbolTable {
         }
     }
 
-    fun checkStatements() {
-
+    fun checkDeclarations() {
+        classMap.values.forEach {
+            it.isWellDeclared()
+        }
     }
 
     fun consolidate() {

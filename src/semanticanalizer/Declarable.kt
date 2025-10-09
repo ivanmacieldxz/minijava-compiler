@@ -1,8 +1,10 @@
 package semanticanalizer
 
+import symbolTable
 import utils.Token
 import utils.Token.DummyToken
 import java.util.Collections.emptyMap
+import java.util.Stack
 
 interface Declarable {
 
@@ -40,18 +42,69 @@ object DummyClass: Class() {}
 
 open class Class() : Modifiable {
 
+    private companion object {
+        var withoutCircularity = mutableSetOf<Class>()
+        var mightOrDoHaveCircularity = mutableSetOf<Class>()
+    }
+
     override var token: Token = DummyToken
     var constructor: Constructor = Constructor(parentClass = this)
 
     var parentClass: Token = DummyToken
     var methodMap = mutableMapOf<String, Method>()
-    override var modifier: Token = DummyToken
-
     val attributeMap = mutableMapOf<String, Attribute>()
 
+    override var modifier: Token = DummyToken
+
     override fun isWellDeclared() {
-        TODO("Not yet implemented")
+        checkCircularInheritance()
+
+//        attributeMap.values.forEach {
+//            it.isWellDeclared()
+//        }
+//
+//        methodMap.values.forEach {
+//            it.isWellDeclared()
+//        }
     }
+
+    private fun checkCircularInheritance() {
+        //recordá que usaste una pila en lugar de una única var por si
+        //llegás a implementar el logro de interfaces, que permiten herencia múltiple
+        //cambiaría muy poco en tal caso (tendrías que guardar el camino inválido
+        //para no invalidar ramas válidas de herencia
+        val border = Stack<Class>()
+
+        border.push(this)
+
+        while (border.isNotEmpty()) {
+            val current = border.pop()
+
+            if (current in withoutCircularity) {
+                break
+            }
+
+            if (current in mightOrDoHaveCircularity)
+                throw CircularInheritanceException("Herencia circular detectada")
+
+            mightOrDoHaveCircularity.add(current)
+
+            if (current.hasExplicitParent()) {
+                val parentClass = symbolTable.classMap[current.parentClass.lexeme]
+                    ?: throw UndeclaredClassException("La clase padre no está declarada")
+
+                border.push(parentClass)
+            }
+
+        }
+
+        withoutCircularity.addAll(mightOrDoHaveCircularity)
+        mightOrDoHaveCircularity.removeAll { true }
+    }
+
+    private fun hasExplicitParent() = parentClass.isDummyToken().not()
+
+
     override fun toString(): String {
         var strRep = "class ${token.lexeme} "
 

@@ -1,4 +1,4 @@
-abstract class IdClase extends ClaseRandom {
+abstract class IdClase {
 
     int at1;
     String at2;
@@ -16,7 +16,7 @@ class IdClase2 extends A {
     int at;
 }
 
-class A {
+class A extends B {
 
     public A(int a, int b, char c, String z) {
 
@@ -24,6 +24,6 @@ class A {
 
 }
 
-class B {
+class B extends A {
 
 }

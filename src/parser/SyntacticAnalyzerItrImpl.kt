@@ -125,10 +125,6 @@ class SyntacticAnalyzerItrImpl(
                                 expectedElementsStack.addFirst(TokenType.MET_VAR_IDENTIFIER)
                                 expectedElementsStack.addFirst(TokenType.VOID)
 
-                                //TODO: verificar el contexto cuando encuentre idmetvar, puede ser que ya tenga armado
-                                // que es este caso
-                                // si es clase, entonces no pude determinar aún si es met o atr
-                                // puede pasar que sea parámetro también, que es el caso que considerás por ahora
                                 symbolTable.currentContext = Method(
                                     parentClass = symbolTable.currentClass
                                 ).apply {
