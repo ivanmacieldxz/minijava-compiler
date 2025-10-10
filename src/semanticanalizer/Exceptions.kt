@@ -13,46 +13,57 @@ abstract class SemanticException(
 }
 
 class RepeatedDeclarationException(
-    override val message: String,
+    message: String,
     token: Token
 ) : SemanticException(message, token)
 
 class CircularInheritanceException(
-    override val message: String,
+    message: String,
     token: Token
 ) : SemanticException(message, token)
 
 class BadlyNamedConstructorException(
-    override val message: String,
+    message: String,
     token: Token
 ) : SemanticException(message, token)
 
 class MoreThanOneConstructorDeclarationException(
-    override val message: String,
+    message: String,
     token: Token
 ) : SemanticException(message, token)
 
 class InvalidClassNameException(
-    override val message: String,
+    message: String,
     token: Token
 ) : SemanticException(message, token)
 
 class UndeclaredClassException(
-    override val message: String,
+    message: String,
     token: Token
 ) : SemanticException(message, token)
 
 class InvalidMethodDeclarationException(
-    override val message: String,
+    message: String,
     token: Token
 ) : SemanticException(message, token)
 
 class InvalidInheritanceException(
-    override val message: String,
+    message: String,
     token: Token
 ) : SemanticException(message, token)
 
 class InvalidRedefinitionException(
-    override val message: String,
+    message: String,
     token: Token
 ) : SemanticException(message, token)
+
+class InvalidConstructorDeclarationException(
+    message: String,
+    token: Token
+): SemanticException(message, token)
+
+class InvalidClassDeclarationException(
+    message: String,
+    token: Token
+): SemanticException(message, token)
+

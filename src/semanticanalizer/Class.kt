@@ -42,7 +42,7 @@ open class Class() : Modifiable {
 
         if (modifier.type == ABSTRACT && parentClass != Object && parentClass.modifier.type != ABSTRACT)
             throw InvalidInheritanceException(
-                "la clase actual es abstracta y su padre no es abstracto",
+                "las clases abstractas no pueden heredar de clases concretas",
                 token
             )
 
@@ -78,6 +78,7 @@ open class Class() : Modifiable {
             }
         }
 
+
         metIntersection.forEach {
             val parentMethodDefinition = parentClass.methodMap[it.token.lexeme]!!
 
@@ -93,15 +94,19 @@ open class Class() : Modifiable {
                         "los métodos abstractos redefinidos no pueden ser también abstractos",
                         it.modifier
                     )
-                else {
-                    checkValidRedefinition(it, parentMethodDefinition)
-                }
-            } else {
-                checkValidRedefinition(it, parentMethodDefinition)
             }
+            checkValidRedefinition(it, parentMethodDefinition)
         }
 
         val methodsToAdd = parentClass.methodMap - metIntersection.map { it.token.lexeme }.toSet()
+
+        methodsToAdd.forEach { (_,value) ->
+            if (value.modifier.type == ABSTRACT && modifier.type != ABSTRACT)
+                throw InvalidClassDeclarationException(
+                    "la clase es concreta y no implementa todos los métodos abstractos",
+                    token
+                )
+        }
 
         methodMap.putAll(methodsToAdd)
 
@@ -113,8 +118,10 @@ open class Class() : Modifiable {
         if (currentMethodDefinition.modifier.type == STATIC)
             throw InvalidRedefinitionException(
                 "La redefinición de un método no puede tener modificador static",
-                currentMethodDefinition.modifier
+                currentMethodDefinition.token
             )
+
+
 
         if (currentMethodDefinition.paramMap.size != parentMethodDefinition.paramMap.size)
             throw InvalidRedefinitionException(

@@ -12,6 +12,7 @@ import semanticanalizer.DummyClass
 import semanticanalizer.DummyContext
 import semanticanalizer.FormalArgument
 import semanticanalizer.InvalidClassNameException
+import semanticanalizer.InvalidConstructorDeclarationException
 import semanticanalizer.InvalidMethodDeclarationException
 import semanticanalizer.Method
 import semanticanalizer.MoreThanOneConstructorDeclarationException
@@ -504,6 +505,12 @@ class SyntacticAnalyzerItrImpl(
                                     }
                                 }
                                 is Constructor -> {
+                                    if (symbolTable.currentClass.modifier.type == TokenType.ABSTRACT)
+                                        throw InvalidConstructorDeclarationException(
+                                            "las clases abstractas no pueden tener constructores",
+                                            prevToken
+                                        )
+
                                     if (symbolTable.currentClass.token.lexeme != prevToken.lexeme)
                                         throw BadlyNamedConstructorException(
                                             "el nombre del constructor no coincide con el de la clase",
@@ -563,23 +570,28 @@ class SyntacticAnalyzerItrImpl(
                                     accumulator.clear()
                                 }
                                 is Method -> {
-                                    if (accumulator.modifier.type == TokenType.ABSTRACT)
+                                    val throwIMDE = accumulator.modifier.type == TokenType.ABSTRACT
+                                    val methodContext = symbolTable.currentContext
+
+                                    addMethod()
+
+                                    if (throwIMDE)
                                         throw InvalidMethodDeclarationException(
                                             "los métodos abstractos no pueden tener cuerpo.",
-                                            prevToken
+                                            methodContext.token
                                         )
-                                    addMethod()
                                 }
                             }
                         }
 
                         TokenType.MET_VAR_IDENTIFIER -> {
                             when (val currentContext = symbolTable.currentContext) {
-                                is FormalArgument/*, is Attribute*/ -> {
+                                is FormalArgument -> {
                                     currentContext.token = prevToken
                                 }
                                 is Method -> {
-                                    currentContext.token = prevToken
+                                    if (currentContext.declarationCompleted.not())
+                                        currentContext.token = prevToken
                                 }
                                 is Class -> {
                                     if (currentToken.type == TokenType.LEFT_BRACKET) {
@@ -639,18 +651,14 @@ class SyntacticAnalyzerItrImpl(
                         }
 
                         TokenType.SEMICOLON -> {
-                            if (symbolTable.currentContext is Method) {
+                            val context = symbolTable.currentContext
+                            if (context is Method && context.declarationCompleted.not()) {
                                 if (accumulator.modifier.type == TokenType.ABSTRACT) {
-                                    if (symbolTable.currentClass.modifier.type != TokenType.ABSTRACT)
-                                        throw InvalidMethodDeclarationException(
-                                            "declaración de método abstracto en clase concreta",
-                                            accumulator.modifier
-                                        )
-                                    else addMethod()
+                                    addMethod()
                                 } else
                                     throw InvalidMethodDeclarationException(
                                         "declaración de método concreto sin cuerpo.",
-                                        prevToken
+                                        context.token
                                     )
 
                             }
@@ -674,6 +682,14 @@ class SyntacticAnalyzerItrImpl(
 
         currentContext.paramMap = accumulator.params
         currentContext.modifier = accumulator.modifier
+        currentContext.declarationCompleted = true
+
+        if (currentContext.modifier.type == TokenType.ABSTRACT &&
+            symbolTable.currentClass.modifier.type != TokenType.ABSTRACT)
+            throw InvalidMethodDeclarationException(
+                "declaración de método abstracto en clase concreta.",
+                currentContext.token
+            )
 
         symbolTable.currentClass.methodMap.putIfAbsentOrError(
             currentContext.token.lexeme,

@@ -21,14 +21,18 @@ fun main(args: Array<String>) {
 
 
     try {
-        //TODO: descablear
         sourceManager.open(args[0])
+//        sourceManager.open("resources/conErrores/redefinicion1.java")
         parser.start()
 
         symbolTable.checkDeclarations()
         symbolTable.consolidate()
 
-        print(symbolTable.classMap)
+        println(symbolTable.classMap.forEach {
+            if ((it.key in SymbolTable.classesNames).not()) {
+                println(it.value.methodMap)
+            }
+        })
     } catch (e: LexicalException) {
         print(e.errorReport())
         wereErrors = true

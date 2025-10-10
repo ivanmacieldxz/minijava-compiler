@@ -14,6 +14,7 @@ class Method(
     override var paramMap: MutableMap<String, FormalArgument> = Collections.emptyMap()
     override var modifier: Token = DummyToken
     override var typeToken: Token = DummyToken
+    var declarationCompleted = false
 
     override fun toString(): String {
         return "$modifier\n $typeToken $token $paramMap"
