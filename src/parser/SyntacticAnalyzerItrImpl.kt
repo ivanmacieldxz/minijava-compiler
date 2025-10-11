@@ -32,8 +32,6 @@ class SyntacticAnalyzerItrImpl(
 ): SyntacticAnalyzer {
     private var expectedElementsStack = ArrayDeque<SyntacticStackable>()
     private lateinit var currentToken: Token
-    
-    private val accumulator = symbolTable.accumulator
 
     override fun start() {
 
@@ -81,13 +79,13 @@ class SyntacticAnalyzerItrImpl(
                         }
 
                         NonTerminal.MODIFIER -> {
-                            accumulator.modifier = currentToken
+                            symbolTable.accumulator.modifier = currentToken
 
                             matchAnyInFirst(currentStackElement)
                         }
 
                         NonTerminal.OPTIONAL_INHERITANCE -> {
-                            accumulator.foundInheritance = true
+                            symbolTable.accumulator.foundInheritance = true
 
                             if (currentToken.inFirsts(currentStackElement)) {
                                 expectedElementsStack.addFirst(TokenType.CLASS_IDENTIFIER)
@@ -108,8 +106,6 @@ class SyntacticAnalyzerItrImpl(
                             if (currentToken.inFirsts(NonTerminal.TYPE)) {
                                 expectedElementsStack.addFirst(NonTerminal.REST_OF_MEMBER_DECLARATION)
                                 expectedElementsStack.addFirst(NonTerminal.TYPE)
-
-                                symbolTable.accumulator.memberType = currentToken
                             } else if (currentToken.inFirsts(NonTerminal.CONSTRUCTOR)) {
                                 expectedElementsStack.addFirst(NonTerminal.CONSTRUCTOR)
                             } else if (currentToken.inFirsts(NonTerminal.MODIFIER)) {
@@ -137,11 +133,7 @@ class SyntacticAnalyzerItrImpl(
                         }
 
                         NonTerminal.TYPE -> {
-                            when (val currentContext = symbolTable.currentContext) {
-                                is FormalArgument/*, is Attribute*/ -> {
-                                    currentContext.typeToken = currentToken
-                                }
-                            }
+                            symbolTable.accumulator.memberType = currentToken
 
                             matchAnyInFirst(currentStackElement)
                         }
@@ -487,19 +479,20 @@ class SyntacticAnalyzerItrImpl(
                         TokenType.CLASS_IDENTIFIER -> {
                             when (val currentContext = symbolTable.currentContext) {
                                 is Class -> {
-                                    when (accumulator.className) {
+                                    when (symbolTable.accumulator.className) {
                                         Token.DummyToken -> {
-                                            accumulator.className = prevToken
+                                            symbolTable.accumulator.className = prevToken
                                         }
                                         else -> {
-                                            if (accumulator.foundInheritance) {
-                                                if (accumulator.classParent.lexeme == prevToken.lexeme)
+                                            if (symbolTable.accumulator.foundInheritance) {
+                                                if (symbolTable.accumulator.classParent.lexeme == prevToken.lexeme &&
+                                                    prevToken.lexeme != Object.token.lexeme)
                                                     throw CircularInheritanceException(
                                                         "herencia circular detectada.",
                                                         prevToken
                                                     )
 
-                                                accumulator.classParent = prevToken
+                                                symbolTable.accumulator.classParent = prevToken
                                             }
                                         }
                                     }
@@ -526,17 +519,17 @@ class SyntacticAnalyzerItrImpl(
                         }
 
                         TokenType.EXTENDS -> {
-                            accumulator.foundInheritance = true
+                            symbolTable.accumulator.foundInheritance = true
                         }
 
                         TokenType.LEFT_CURLY_BRACKET -> {
                             when (val currentContext = symbolTable.currentContext) {
                                 is Class -> {
 
-                                    currentContext.token = accumulator.className
-                                    currentContext.modifier = accumulator.modifier
+                                    currentContext.token = symbolTable.accumulator.className
+                                    currentContext.modifier = symbolTable.accumulator.modifier
                                     currentContext.parentClass = Object
-                                    currentContext.parentClassToken = accumulator.classParent
+                                    currentContext.parentClassToken = symbolTable.accumulator.classParent
 
                                     if (currentContext.token.lexeme in Predefined.classesNames)
                                         throw InvalidClassNameException(
@@ -554,8 +547,8 @@ class SyntacticAnalyzerItrImpl(
                                         )
                                     }
 
-                                    accumulator.modifier = Token.DummyToken
-                                    accumulator.foundInheritance = false
+                                    symbolTable.accumulator.modifier = Token.DummyToken
+                                    symbolTable.accumulator.foundInheritance = false
                                 }
                                 is Constructor -> {
                                     if (currentContext.parentClass.constructor.isDefaultConstructor().not())
@@ -565,12 +558,12 @@ class SyntacticAnalyzerItrImpl(
                                         )
 
                                     currentContext.parentClass.constructor = currentContext
-                                    currentContext.paramMap = accumulator.params
+                                    currentContext.paramMap = symbolTable.accumulator.params
 
-                                    accumulator.clear()
+                                    symbolTable.accumulator.clear()
                                 }
                                 is Method -> {
-                                    val throwIMDE = accumulator.modifier.type == TokenType.ABSTRACT
+                                    val throwIMDE = symbolTable.accumulator.modifier.type == TokenType.ABSTRACT
                                     val methodContext = symbolTable.currentContext
 
                                     addMethod()
@@ -588,6 +581,7 @@ class SyntacticAnalyzerItrImpl(
                             when (val currentContext = symbolTable.currentContext) {
                                 is FormalArgument -> {
                                     currentContext.token = prevToken
+                                    currentContext.typeToken = symbolTable.accumulator.memberType
                                 }
                                 is Method -> {
                                     if (currentContext.declarationCompleted.not())
@@ -598,7 +592,7 @@ class SyntacticAnalyzerItrImpl(
                                         symbolTable.currentContext = Method(
                                             prevToken,
                                             symbolTable.currentClass
-                                        )
+                                        ).also { it.typeToken = symbolTable.accumulator.memberType }
                                     } else if (currentToken.type == TokenType.SEMICOLON) {
                                         symbolTable.currentClass.attributeMap.putIfAbsentOrError(
                                             prevToken.lexeme,
@@ -606,7 +600,7 @@ class SyntacticAnalyzerItrImpl(
                                                 prevToken,
                                                 symbolTable.currentClass
                                             ).also {
-                                                it.typeToken = accumulator.memberType
+                                                it.typeToken = symbolTable.accumulator.memberType
                                             }
                                         ) {
                                             throw RepeatedDeclarationException(
@@ -623,7 +617,7 @@ class SyntacticAnalyzerItrImpl(
                         TokenType.COMMA, TokenType.RIGHT_BRACKET -> {
                             when (val currentContext = symbolTable.currentContext) {
                                 is FormalArgument -> {
-                                    accumulator.params.putIfAbsentOrError(
+                                    symbolTable.accumulator.params.putIfAbsentOrError(
                                         currentContext.token.lexeme,
                                         currentContext
                                     ) {
@@ -642,7 +636,7 @@ class SyntacticAnalyzerItrImpl(
                                 is Class -> {
                                     symbolTable.currentClass = DummyClass
                                     symbolTable.currentContext = DummyContext
-                                    accumulator.clear()
+                                    symbolTable.accumulator.clear()
                                 }
                                 else -> {
                                     symbolTable.currentContext = symbolTable.currentClass
@@ -653,7 +647,7 @@ class SyntacticAnalyzerItrImpl(
                         TokenType.SEMICOLON -> {
                             val context = symbolTable.currentContext
                             if (context is Method && context.declarationCompleted.not()) {
-                                if (accumulator.modifier.type == TokenType.ABSTRACT) {
+                                if (symbolTable.accumulator.modifier.type == TokenType.ABSTRACT) {
                                     addMethod()
                                 } else
                                     throw InvalidMethodDeclarationException(
@@ -678,10 +672,10 @@ class SyntacticAnalyzerItrImpl(
         val currentContext = symbolTable.currentContext as Method
 
         if (currentContext.typeToken.isDummyToken())
-            currentContext.typeToken = accumulator.memberType
+            currentContext.typeToken = symbolTable.accumulator.memberType
 
-        currentContext.paramMap = accumulator.params
-        currentContext.modifier = accumulator.modifier
+        currentContext.paramMap = symbolTable.accumulator.params
+        currentContext.modifier = symbolTable.accumulator.modifier
         currentContext.declarationCompleted = true
 
         if (currentContext.modifier.type == TokenType.ABSTRACT &&
@@ -701,7 +695,7 @@ class SyntacticAnalyzerItrImpl(
             )
         }
 
-        accumulator.clear()
+        symbolTable.accumulator.clear()
     }
 
     /**

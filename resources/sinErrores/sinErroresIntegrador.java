@@ -1,0 +1,50 @@
+///[SinErrores]
+class X {
+    int a;
+    String b;
+    Object c;
+
+    public X() {
+
+    }
+
+    void x() {
+
+    }
+    void x1(int x, int y, char z) {
+
+    }
+    static void a(X i) {
+
+    }
+    final void x2() {
+
+    }
+}
+
+abstract class Y extends Object {
+    Y x;
+    abstract void s(int x, Y y);
+    static void main() {
+        return x;
+    }
+    static void n() {
+        Y.main();
+        return Y.main();
+    }
+    void x() {
+
+    }
+}
+
+final class Z extends Y {
+    void s(int x, Y y) {
+
+    }
+}
+
+final class W extends Y {
+    final void s(int x, Y y) {
+
+    }
+}

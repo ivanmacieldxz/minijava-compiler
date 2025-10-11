@@ -8,7 +8,7 @@ import utils.TokenType.CLASS_IDENTIFIER
 class Attribute(
     override var token: Token = DummyToken,
     override val parentClass: Class
-) : Declarable, ClassMember, Typed {
+) : ClassMember, Typed {
 
     override var typeToken: Token = DummyToken
 

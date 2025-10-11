@@ -1,8 +1,8 @@
 ///[Error:overriddenMethod|7]
 class Parent {
-    int overriddenMethod() { return 1; }
+    int overriddenMethod(int a) { return 1; }
 }
 
 class Child extends Parent {
-    void overriddenMethod() { }
+    void overriddenMethod(int a) { }
 }

@@ -69,12 +69,6 @@ open class Class() : Modifiable {
         methodMap.values.forEach {
             if (it.token.lexeme in parentClass.methodMap.keys) {
                 metIntersection.add(it)
-            } else {
-                if (it.modifier.isDummyToken() && modifier.type == ABSTRACT)
-                    throw InvalidMethodDeclarationException(
-                        "no se admite la declaración de métodos concretos en clases abstractas",
-                        it.token
-                    )
             }
         }
 

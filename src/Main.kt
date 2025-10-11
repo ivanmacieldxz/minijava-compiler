@@ -27,12 +27,6 @@ fun main(args: Array<String>) {
 
         symbolTable.checkDeclarations()
         symbolTable.consolidate()
-
-        println(symbolTable.classMap.forEach {
-            if ((it.key in SymbolTable.classesNames).not()) {
-                println(it.value.methodMap)
-            }
-        })
     } catch (e: LexicalException) {
         print(e.errorReport())
         wereErrors = true
