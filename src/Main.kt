@@ -22,7 +22,6 @@ fun main(args: Array<String>) {
 
     try {
         sourceManager.open(args[0])
-//        sourceManager.open("resources/conErrores/redefinicion1.java")
         parser.start()
 
         symbolTable.checkDeclarations()

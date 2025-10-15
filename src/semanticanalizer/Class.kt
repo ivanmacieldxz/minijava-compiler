@@ -13,8 +13,6 @@ import utils.TokenType.STATIC
 import utils.TokenType.VOID
 import utils.TokenType.ABSTRACT
 import java.util.Stack
-import kotlin.collections.component1
-import kotlin.collections.component2
 
 private val objectToken = Token(CLASS_IDENTIFIER, "Object", -1)
 
@@ -30,7 +28,7 @@ open class Class() : Modifiable {
 
     var parentClassToken: Token = objectToken
     var methodMap = mutableMapOf<String, Method>()
-    val attributeMap = mutableMapOf<String, Attribute>()
+    val attributeMap = mutableMapOf<String, MutableSet<Attribute>>()
     var parentClass: Class = Object
 
     var isConsolidated = false
@@ -52,16 +50,9 @@ open class Class() : Modifiable {
         if (parentClass.isConsolidated.not())
             parentClass.consolidate()
 
-        //atributos
-        attributeMap.values.forEach {
-            if (it.token.lexeme in parentClass.attributeMap.keys)
-                throw InvalidRedefinitionException(
-                    "no se admite la redefinición de atributos.",
-                    it.token
-                )
+        parentClass.attributeMap.forEach { (key, value) ->
+            attributeMap.getOrPut(key) { mutableSetOf() }.addAll(value)
         }
-
-        attributeMap.putAll(parentClass.attributeMap)
 
         //métodos
         val metIntersection = mutableSetOf<Method>()
@@ -164,8 +155,10 @@ open class Class() : Modifiable {
 
         constructor.isWellDeclared()
 
-        attributeMap.values.forEach {
-            it.isWellDeclared()
+        attributeMap.values.forEach { set ->
+            set.forEach { attr ->
+                attr.isWellDeclared()
+            }
         }
 
         methodMap.values.forEach {

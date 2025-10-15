@@ -796,4 +796,16 @@ class SyntacticAnalyzerItrImpl(
 
         this[key] = value
     }
+
+    private inline fun MutableMap<String, MutableSet<Attribute>>.putIfAbsentOrError(
+        key: String,
+        value: Attribute,
+        errorFunction: () -> Unit
+    ) {
+        if (this.contains(key)) {
+            errorFunction()
+        }
+
+        this[key] = mutableSetOf(value)
+    }
 }

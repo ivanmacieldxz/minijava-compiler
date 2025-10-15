@@ -22,6 +22,10 @@ class X {
     }
 }
 
+class B extends X {
+
+}
+
 abstract class Y extends Object {
     Y x;
     abstract void s(int x, Y y);
@@ -38,12 +42,14 @@ abstract class Y extends Object {
 }
 
 final class Z extends Y {
+    int x;
     void s(int x, Y y) {
 
     }
 }
 
 final class W extends Y {
+    X x;
     final void s(int x, Y y) {
 
     }
