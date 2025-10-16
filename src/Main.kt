@@ -3,7 +3,7 @@ import lexer.LexicalAnalyzerImpl
 import lexer.LexicalException
 import parser.SyntacticAnalyzerItrImpl
 import parser.SyntacticException
-import semanticanalizer.SemanticException
+import semanticanalizer.stmember.SemanticException
 import semanticanalizer.SymbolTable
 import sourcemanager.SourceManager
 import sourcemanager.SourceManagerEfImpl

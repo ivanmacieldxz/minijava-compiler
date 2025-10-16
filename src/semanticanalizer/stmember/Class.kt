@@ -1,4 +1,4 @@
-package semanticanalizer
+package semanticanalizer.stmember
 
 import symbolTable
 import utils.Token

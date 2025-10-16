@@ -1,4 +1,4 @@
-package semanticanalizer
+package semanticanalizer.stmember
 
 import utils.Token
 import utils.Token.DummyToken

@@ -1,5 +1,13 @@
 package semanticanalizer
 
+import semanticanalizer.stmember.Class
+import semanticanalizer.stmember.Declarable
+import semanticanalizer.stmember.DummyClass
+import semanticanalizer.stmember.DummyContext
+import semanticanalizer.stmember.FormalArgument
+import semanticanalizer.stmember.Object
+import semanticanalizer.stmember.StringClass
+import semanticanalizer.stmember.System
 import utils.Token
 import utils.Token.DummyToken
 
