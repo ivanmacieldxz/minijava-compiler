@@ -6,6 +6,7 @@ import utils.Token.DummyToken
 interface Declarable {
 
     var token: Token
+    var declarationCompleted: Boolean
 
     fun isWellDeclared()
     fun isDummyClass() = this == DummyClass
@@ -15,6 +16,7 @@ interface Declarable {
 
 object DummyContext: Declarable {
     override var token: Token = DummyToken
+    override var declarationCompleted = true
 
     override fun isWellDeclared() {}
 }

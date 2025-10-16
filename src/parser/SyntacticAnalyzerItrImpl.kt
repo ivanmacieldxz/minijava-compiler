@@ -523,57 +523,63 @@ class SyntacticAnalyzerItrImpl(
                         }
 
                         TokenType.LEFT_CURLY_BRACKET -> {
-                            when (val currentContext = symbolTable.currentContext) {
-                                is Class -> {
+                            val currentContext = symbolTable.currentContext
 
-                                    currentContext.token = symbolTable.accumulator.className
-                                    currentContext.modifier = symbolTable.accumulator.modifier
-                                    currentContext.parentClass = Object
-                                    currentContext.parentClassToken = symbolTable.accumulator.classParent
+                            if (currentContext.declarationCompleted.not()) {
+                                when (currentContext) {
+                                    is Class -> {
 
-                                    if (currentContext.token.lexeme in Predefined.classesNames)
-                                        throw InvalidClassNameException(
-                                            "la clase ${currentContext.token.lexeme} es parte de las clases predefinidas",
-                                            currentContext.token
-                                        )
+                                        currentContext.token = symbolTable.accumulator.className
+                                        currentContext.modifier = symbolTable.accumulator.modifier
+                                        currentContext.parentClass = Object
+                                        currentContext.parentClassToken = symbolTable.accumulator.classParent
 
-                                    symbolTable.classMap.putIfAbsentOrError(
-                                        currentContext.token.lexeme,
-                                        symbolTable.currentClass
-                                    ) {
-                                        throw RepeatedDeclarationException(
-                                            " la clase ${currentContext.token.lexeme} fue declarada previamente",
-                                            currentContext.token
-                                        )
+                                        if (currentContext.token.lexeme in Predefined.classesNames)
+                                            throw InvalidClassNameException(
+                                                "la clase ${currentContext.token.lexeme} es parte de las clases predefinidas",
+                                                currentContext.token
+                                            )
+
+                                        symbolTable.classMap.putIfAbsentOrError(
+                                            currentContext.token.lexeme,
+                                            symbolTable.currentClass
+                                        ) {
+                                            throw RepeatedDeclarationException(
+                                                " la clase ${currentContext.token.lexeme} fue declarada previamente",
+                                                currentContext.token
+                                            )
+                                        }
+
+                                        symbolTable.accumulator.modifier = Token.DummyToken
+                                        symbolTable.accumulator.foundInheritance = false
                                     }
+                                    is Constructor -> {
+                                        if (currentContext.parentClass.constructor.isDefaultConstructor().not())
+                                            throw MoreThanOneConstructorDeclarationException(
+                                                "la clase actual ya tiene un constructor.",
+                                                currentContext.token
+                                            )
 
-                                    symbolTable.accumulator.modifier = Token.DummyToken
-                                    symbolTable.accumulator.foundInheritance = false
+                                        currentContext.parentClass.constructor = currentContext
+                                        currentContext.paramMap = symbolTable.accumulator.params
+
+                                        symbolTable.accumulator.clear()
+                                    }
+                                    is Method -> {
+                                        val throwIMDE = symbolTable.accumulator.modifier.type == TokenType.ABSTRACT
+                                        val methodContext = symbolTable.currentContext
+
+                                        addMethod()
+
+                                        if (throwIMDE)
+                                            throw InvalidMethodDeclarationException(
+                                                "los métodos abstractos no pueden tener cuerpo.",
+                                                methodContext.token
+                                            )
+                                    }
                                 }
-                                is Constructor -> {
-                                    if (currentContext.parentClass.constructor.isDefaultConstructor().not())
-                                        throw MoreThanOneConstructorDeclarationException(
-                                            "la clase actual ya tiene un constructor.",
-                                            currentContext.token
-                                        )
-
-                                    currentContext.parentClass.constructor = currentContext
-                                    currentContext.paramMap = symbolTable.accumulator.params
-
-                                    symbolTable.accumulator.clear()
-                                }
-                                is Method -> {
-                                    val throwIMDE = symbolTable.accumulator.modifier.type == TokenType.ABSTRACT
-                                    val methodContext = symbolTable.currentContext
-
-                                    addMethod()
-
-                                    if (throwIMDE)
-                                        throw InvalidMethodDeclarationException(
-                                            "los métodos abstractos no pueden tener cuerpo.",
-                                            methodContext.token
-                                        )
-                                }
+                            } else {
+                                symbolTable.accumulator.expectedClosingBrackets++
                             }
                         }
 
@@ -632,15 +638,20 @@ class SyntacticAnalyzerItrImpl(
                         }
 
                         TokenType.RIGHT_CURLY_BRACKET -> {
-                            when (symbolTable.currentContext) {
-                                is Class -> {
-                                    symbolTable.currentClass = DummyClass
-                                    symbolTable.currentContext = DummyContext
-                                    symbolTable.accumulator.clear()
+                            if (symbolTable.accumulator.expectedClosingBrackets == 0){
+                                when (symbolTable.currentContext) {
+                                    is Class -> {
+                                        symbolTable.currentClass = DummyClass
+                                        symbolTable.currentContext = DummyContext
+                                        symbolTable.accumulator.clear()
+                                    }
+
+                                    else -> {
+                                        symbolTable.currentContext = symbolTable.currentClass
+                                    }
                                 }
-                                else -> {
-                                    symbolTable.currentContext = symbolTable.currentClass
-                                }
+                            } else {
+                                symbolTable.accumulator.expectedClosingBrackets--
                             }
                         }
 
@@ -795,6 +806,7 @@ class SyntacticAnalyzerItrImpl(
         }
 
         this[key] = value
+        value.declarationCompleted = true
     }
 
     private inline fun MutableMap<String, MutableSet<Attribute>>.putIfAbsentOrError(
@@ -807,5 +819,6 @@ class SyntacticAnalyzerItrImpl(
         }
 
         this[key] = mutableSetOf(value)
+        value.declarationCompleted = true
     }
 }

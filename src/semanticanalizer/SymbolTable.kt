@@ -32,6 +32,8 @@ class SymbolTable {
         var params = mutableMapOf<String, FormalArgument>()
         var modifier: Token = DummyToken
 
+        var expectedClosingBrackets = 0
+
         fun clear() {
             className = DummyToken
             classParent = Object.token

@@ -11,6 +11,8 @@ class FormalArgument(
     var member: Callable
 ): Declarable, Typed {
 
+    override var declarationCompleted = false
+
     override fun toString(): String {
         return "${typeToken.lexeme} ${token.lexeme}"
     }
