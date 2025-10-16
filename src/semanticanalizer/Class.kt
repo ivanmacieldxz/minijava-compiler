@@ -34,6 +34,7 @@ open class Class() : Modifiable {
     var isConsolidated = false
 
     override var modifier: Token = DummyToken
+    override var declarationCompleted = false
 
     fun consolidate() {
         parentClass = symbolTable.classMap[parentClassToken.lexeme]!!

@@ -44,6 +44,19 @@ abstract class Y extends Object {
 final class Z extends Y {
     int x;
     void s(int x, Y y) {
+        {}{}{{}}
+        if (true) {
+
+        }
+        while (true) {
+
+        }
+        while (false){
+            {}
+            {}{{}}
+        }
+    }
+    void in() {
 
     }
 }
@@ -51,6 +64,10 @@ final class Z extends Y {
 final class W extends Y {
     X x;
     final void s(int x, Y y) {
+        {}{}{}{{{}}}
+    }
+
+    void in() {
 
     }
 }

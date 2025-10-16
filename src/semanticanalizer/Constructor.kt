@@ -10,6 +10,7 @@ class Constructor(
 ) : ClassMember, Callable {
 
     override var paramMap: MutableMap<String, FormalArgument> = Collections.emptyMap()
+    override var declarationCompleted = false
 
     override fun toString(): String {
         return paramMap.toString() + "\n"

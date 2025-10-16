@@ -11,6 +11,7 @@ class Attribute(
 ) : ClassMember, Typed {
 
     override var typeToken: Token = DummyToken
+    override var declarationCompleted = false
 
     override fun toString(): String {
         return "$typeToken $token"
