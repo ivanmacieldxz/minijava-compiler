@@ -121,7 +121,16 @@ open class Class() : Modifiable {
                 currentMethodDefinition.token
             )
 
+        val currentParamsCollection = currentMethodDefinition.paramMap.keys
+        val parentParamsCollection = parentMethodDefinition.paramMap.keys
+
         currentMethodDefinition.paramMap.forEach { (key, value) ->
+            if (currentParamsCollection.indexOf(key) != parentParamsCollection.indexOf(key))
+                throw InvalidRedefinitionException(
+                    "El orden de los parámetros no coincide en la redefinición",
+                    currentMethodDefinition.token
+                )
+
             if (value.typeToken.type != parentMethodDefinition.paramMap[key]!!.typeToken.type)
                 throw InvalidRedefinitionException(
                     "El tipo de los parámetros no coincide en la redefinición",
