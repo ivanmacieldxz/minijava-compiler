@@ -32,8 +32,10 @@ class If(override var parentMember: Callable, override var parentSentence: Sente
     var condition: Expression? = null
     var thenSentence: Sentence? = null
     var elseSentence: Sentence? = null
+
     override fun printItselfAndChildren(nestingLevel: Int) {
-        TODO("Not yet implemented")
+        println("\t".repeat(nestingLevel) + "if (<expresion>)")
+        thenSentence?.printItselfAndChildren(nestingLevel + 1)
     }
 }
 

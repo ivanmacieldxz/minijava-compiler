@@ -53,7 +53,7 @@ final class Z extends Y {
     void s(int x, Y y) {
         {}{}{{}}
         if (true) {
-
+            if (x) {}
         }
         while (true) {
 
@@ -68,7 +68,7 @@ final class Z extends Y {
     }
 }
 
-final class W extends Y {
+class W extends Y {
     X x;
     final void s(int x, Y y) {
         {}{}{}{{{}}}

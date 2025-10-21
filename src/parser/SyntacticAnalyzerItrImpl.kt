@@ -294,6 +294,21 @@ class SyntacticAnalyzerItrImpl(
                             expectedElementsStack.addFirst(NonTerminal.EXPRESSION)
                             expectedElementsStack.addFirst(TokenType.LEFT_BRACKET)
                             expectedElementsStack.addFirst(TokenType.IF)
+
+                            astBuilder.currentContext = If(
+                                parentMember = symbolTable.currentContext as Callable,
+                                parentSentence = astBuilder.currentContext as Sentence
+                            ).apply {
+                                when (val parent = parentSentence) {
+                                    is Block -> {
+                                        parent.childSentencesList.add(this)
+                                    }
+                                    is If -> {
+                                        parent.thenSentence = this
+                                    }
+                                }
+                            }
+
                         }
 
                         NonTerminal.OPTIONAL_ELSE -> {
@@ -687,8 +702,14 @@ class SyntacticAnalyzerItrImpl(
                             } else {
                                 symbolTable.accumulator.expectedClosingBrackets--
 
-                                astBuilder.currentContext = (astBuilder.currentContext as? Sentence)?.parentSentence
+                                astBuilder.currentContext = (astBuilder.currentContext as? Sentence)
+                                    ?.parentSentence
 
+                                when (val astContext = astBuilder.currentContext) {
+                                    is If, /* while, return */ -> {
+                                        astBuilder.currentContext = astContext.parentSentence
+                                    }
+                                }
                             }
                         }
 
@@ -798,7 +819,7 @@ class SyntacticAnalyzerItrImpl(
     }
 
     private fun matchAnyInNext(nonTerminal: NonTerminal) {
-        if (currentToken.type in NonTerminal.follow[nonTerminal])
+        if (currentToken.type in follow[nonTerminal])
             match(currentToken.type)
         else
             throw MismatchException(
@@ -812,7 +833,7 @@ class SyntacticAnalyzerItrImpl(
      * Should be used when void production is an option.
      */
     private fun tryMatchAnyInNext(nonTerminal: NonTerminal): Boolean {
-        val couldMatch = currentToken.type in NonTerminal.follow[nonTerminal]
+        val couldMatch = currentToken.type in follow[nonTerminal]
 
         if (couldMatch)
             match(currentToken.type)
@@ -824,7 +845,7 @@ class SyntacticAnalyzerItrImpl(
         nonTerminal.first.contains(this.type)
 
     private fun Token.inNexts(nonTerminal: NonTerminal) =
-        NonTerminal.follow[nonTerminal].contains(this.type)
+        follow[nonTerminal].contains(this.type)
 
     private operator fun Array<Set<TokenType>>.get(nonTerminal: NonTerminal) =
         follow[nonTerminal.ordinal]
