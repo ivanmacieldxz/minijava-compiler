@@ -19,6 +19,10 @@ import semanticanalizer.stmember.MoreThanOneConstructorDeclarationException
 import semanticanalizer.stmember.Object
 import semanticanalizer.stmember.RepeatedDeclarationException
 import semanticanalizer.SymbolTable.Predefined
+import semanticanalizer.ast.ASTBuilder
+import semanticanalizer.ast.member.Block
+import semanticanalizer.ast.member.If
+import semanticanalizer.ast.member.Sentence
 import symbolTable
 import utils.NonTerminal
 import utils.NonTerminal.Companion.follow
@@ -32,6 +36,8 @@ class SyntacticAnalyzerItrImpl(
 ): SyntacticAnalyzer {
     private var expectedElementsStack = ArrayDeque<SyntacticStackable>()
     private lateinit var currentToken: Token
+
+    private var astBuilder = ASTBuilder()
 
     override fun start() {
 
@@ -567,19 +573,47 @@ class SyntacticAnalyzerItrImpl(
                                     }
                                     is Method -> {
                                         val throwIMDE = symbolTable.accumulator.modifier.type == TokenType.ABSTRACT
-                                        val methodContext = symbolTable.currentContext
 
                                         addMethod()
 
                                         if (throwIMDE)
                                             throw InvalidMethodDeclarationException(
                                                 "los métodos abstractos no pueden tener cuerpo.",
-                                                methodContext.token
+                                                currentContext.token
                                             )
+
+                                        astBuilder.currentContext = Block(
+                                            currentContext,
+                                            astBuilder.currentContext as? Sentence
+                                        )
+
+                                        val currentBlock = astBuilder.currentContext as Block
+
+                                        currentContext.block = currentContext.block ?: currentBlock
                                     }
                                 }
                             } else {
                                 symbolTable.accumulator.expectedClosingBrackets++
+
+                                when (currentContext) {
+                                    is Callable -> {
+                                        astBuilder.currentContext = Block(
+                                            currentContext,
+                                            astBuilder.currentContext as? Sentence
+                                        )
+
+                                        val currentBlock = astBuilder.currentContext as Block
+
+                                        when (val currentBlockParent = currentBlock.parentSentence) {
+                                            is Block -> {
+                                                currentBlockParent.childSentencesList.add(currentBlock)
+                                            }
+                                            is If -> {
+                                                currentBlockParent.thenSentence = currentBlock
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
 
@@ -652,6 +686,9 @@ class SyntacticAnalyzerItrImpl(
                                 }
                             } else {
                                 symbolTable.accumulator.expectedClosingBrackets--
+
+                                astBuilder.currentContext = (astBuilder.currentContext as? Sentence)?.parentSentence
+
                             }
                         }
 

@@ -26,6 +26,17 @@ fun main(args: Array<String>) {
 
         symbolTable.checkDeclarations()
         symbolTable.consolidate()
+
+        symbolTable.classMap.values.forEach { cls ->
+            if ((cls.token.lexeme in SymbolTable.classesNames).not()) {
+                println("${cls.modifier.lexeme.takeIf { it != "" }?.plus(" ") ?: ""}class ${cls.token.lexeme}:")
+                cls.methodMap.values.forEach {
+                    println("\t${it.modifier.lexeme.takeIf { it != "" }?.plus(" ") ?: ""}${it.typeToken.lexeme} " +
+                            "${it.token.lexeme}:")
+                    it.printBlock(2)
+                }
+            }
+        }
     } catch (e: LexicalException) {
         print(e.errorReport())
         wereErrors = true

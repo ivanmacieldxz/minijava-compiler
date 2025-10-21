@@ -12,7 +12,14 @@ class X {
 
     }
     void x1(int x, int y, char z) {
-
+        {}{}
+        {
+            {
+                {
+                    {}
+                }
+            }
+        }
     }
     static void a(X i) {
 
