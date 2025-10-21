@@ -6,9 +6,9 @@ class X {
         }
         if (true) {
             if (x) {
-
+                return "";
             } else {
-
+                return 'a';
             }
             if (x) {
 
@@ -37,5 +37,6 @@ class X {
 
             }
         }
+        return false;
     }
 }

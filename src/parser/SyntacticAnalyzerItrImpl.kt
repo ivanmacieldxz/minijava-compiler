@@ -24,6 +24,7 @@ import semanticanalizer.ast.member.Block
 import semanticanalizer.ast.member.CompoundSentence
 import semanticanalizer.ast.member.Else
 import semanticanalizer.ast.member.If
+import semanticanalizer.ast.member.Return
 import semanticanalizer.ast.member.Sentence
 import semanticanalizer.ast.member.While
 import symbolTable
@@ -280,6 +281,20 @@ class SyntacticAnalyzerItrImpl(
                         NonTerminal.RETURN -> {
                             expectedElementsStack.addFirst(NonTerminal.OPTIONAL_EXPRESSION)
                             expectedElementsStack.addFirst(TokenType.RETURN)
+
+                            astBuilder.currentContext = Return(
+                                symbolTable.currentContext as Callable,
+                                astBuilder.currentContext as Sentence
+                            ).apply {
+                                when (val parentSentence = parentSentence) {
+                                    is Block -> {
+                                        parentSentence.childSentencesList.add(this)
+                                    }
+                                    is CompoundSentence -> {
+                                        parentSentence.body = this
+                                    }
+                                }
+                            }
                         }
 
                         NonTerminal.OPTIONAL_EXPRESSION -> {

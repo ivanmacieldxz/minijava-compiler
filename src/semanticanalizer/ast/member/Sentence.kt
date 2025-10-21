@@ -64,3 +64,11 @@ class While(override var parentMember: Callable, override var parentSentence: Se
         body?.printItselfAndChildren(nestingLevel + 1)
     }
 }
+
+class Return(override var parentMember: Callable, override var parentSentence: Sentence?): CompoundSentence {
+    override var body: Sentence? = null
+
+    override fun printItselfAndChildren(nestingLevel: Int) {
+        println("\t".repeat(nestingLevel) + "return <expresion>;")
+    }
+}
