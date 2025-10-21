@@ -21,8 +21,11 @@ import semanticanalizer.stmember.RepeatedDeclarationException
 import semanticanalizer.SymbolTable.Predefined
 import semanticanalizer.ast.ASTBuilder
 import semanticanalizer.ast.member.Block
+import semanticanalizer.ast.member.CompoundSentence
+import semanticanalizer.ast.member.Else
 import semanticanalizer.ast.member.If
 import semanticanalizer.ast.member.Sentence
+import semanticanalizer.ast.member.While
 import symbolTable
 import utils.NonTerminal
 import utils.NonTerminal.Companion.follow
@@ -303,8 +306,8 @@ class SyntacticAnalyzerItrImpl(
                                     is Block -> {
                                         parent.childSentencesList.add(this)
                                     }
-                                    is If -> {
-                                        parent.thenSentence = this
+                                    is CompoundSentence -> {
+                                        parent.body = this
                                     }
                                 }
                             }
@@ -315,6 +318,20 @@ class SyntacticAnalyzerItrImpl(
                             if (currentToken.inFirsts(currentStackElement)) {
                                 expectedElementsStack.addFirst(NonTerminal.SENTENCE)
                                 expectedElementsStack.addFirst(TokenType.ELSE)
+
+                                astBuilder.currentContext = Else(
+                                    parentMember = symbolTable.currentContext as Callable,
+                                    parentSentence = astBuilder.currentContext as Sentence
+                                ).apply {
+                                    when (val parent = parentSentence) {
+                                        is Block -> {
+                                            parent.childSentencesList.add(this)
+                                        }
+                                        is If -> {
+                                            parent.elseSentence = this
+                                        }
+                                    }
+                                }
                             } else if (currentToken.inNexts(currentStackElement).not()) {
                                 throwUnexpectedTerminalException(currentStackElement)
                             }
@@ -326,6 +343,20 @@ class SyntacticAnalyzerItrImpl(
                             expectedElementsStack.addFirst(NonTerminal.EXPRESSION)
                             expectedElementsStack.addFirst(TokenType.LEFT_BRACKET)
                             expectedElementsStack.addFirst(TokenType.WHILE)
+
+                            astBuilder.currentContext = While(
+                                parentMember = symbolTable.currentContext as Callable,
+                                parentSentence = astBuilder.currentContext as Sentence
+                            ).apply {
+                                when (val parent = parentSentence) {
+                                    is Block -> {
+                                        parent.childSentencesList.add(this)
+                                    }
+                                    is CompoundSentence -> {
+                                        parent.body = this
+                                    }
+                                }
+                            }
                         }
 
                         NonTerminal.EXPRESSION -> {
@@ -623,8 +654,8 @@ class SyntacticAnalyzerItrImpl(
                                             is Block -> {
                                                 currentBlockParent.childSentencesList.add(currentBlock)
                                             }
-                                            is If -> {
-                                                currentBlockParent.thenSentence = currentBlock
+                                            is CompoundSentence -> {
+                                                currentBlockParent.body = currentBlock
                                             }
                                         }
                                     }
@@ -706,7 +737,7 @@ class SyntacticAnalyzerItrImpl(
                                     ?.parentSentence
 
                                 when (val astContext = astBuilder.currentContext) {
-                                    is If, /* while, return */ -> {
+                                    is CompoundSentence /* return */ -> {
                                         astBuilder.currentContext = astContext.parentSentence
                                     }
                                 }
@@ -714,17 +745,19 @@ class SyntacticAnalyzerItrImpl(
                         }
 
                         TokenType.SEMICOLON -> {
-                            val context = symbolTable.currentContext
-                            if (context is Method && context.declarationCompleted.not()) {
+                            val stContext = symbolTable.currentContext
+                            if (stContext is Method && stContext.declarationCompleted.not()) {
                                 if (symbolTable.accumulator.modifier.type == TokenType.ABSTRACT) {
                                     addMethod()
                                 } else
                                     throw InvalidMethodDeclarationException(
                                         "declaración de método concreto sin cuerpo.",
-                                        context.token
+                                        stContext.token
                                     )
 
                             }
+
+                            //TODO: sentencias vacías cuando el contexto es CompoundSentence
                         }
 
                         else -> {}
