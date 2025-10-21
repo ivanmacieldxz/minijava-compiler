@@ -1,5 +1,6 @@
 package semanticanalizer.stmember
 
+import semanticanalizer.ast.member.Block
 import symbolTable
 import utils.Token
 import utils.Token.DummyToken
@@ -11,10 +12,14 @@ class Method(
     override var parentClass: Class
 ) : Modifiable, ClassMember, Callable, Typed {
 
-    override var paramMap: MutableMap<String, FormalArgument> = Collections.emptyMap()
-    override var modifier: Token = DummyToken
-    override var typeToken: Token = DummyToken
     override var declarationCompleted = false
+
+    override var modifier: Token = DummyToken
+
+    override var paramMap: MutableMap<String, FormalArgument> = Collections.emptyMap()
+    override var block: Block? = null
+
+    override var typeToken: Token = DummyToken
 
     override fun toString(): String {
         return "$modifier\n $typeToken $token $paramMap"

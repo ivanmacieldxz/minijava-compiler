@@ -1,5 +1,6 @@
 package semanticanalizer.stmember
 
+import semanticanalizer.ast.member.Block
 import utils.Token
 import utils.Token.DummyToken
 
@@ -31,6 +32,11 @@ interface ClassMember: Declarable {
 
 interface Callable: Declarable{
     var paramMap: MutableMap<String, FormalArgument>
+    var block: Block?
+
+    fun printBlock(nestingLevel: Int) {
+        block?.printItselfAndChildren(nestingLevel)
+    }
 }
 
 interface Typed {

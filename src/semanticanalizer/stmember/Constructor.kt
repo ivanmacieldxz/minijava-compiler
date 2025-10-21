@@ -1,5 +1,6 @@
 package semanticanalizer.stmember
 
+import semanticanalizer.ast.member.Block
 import utils.Token
 import utils.Token.DummyToken
 import java.util.Collections
@@ -9,8 +10,10 @@ class Constructor(
     override val parentClass: Class
 ) : ClassMember, Callable {
 
-    override var paramMap: MutableMap<String, FormalArgument> = Collections.emptyMap()
     override var declarationCompleted = false
+
+    override var paramMap: MutableMap<String, FormalArgument> = Collections.emptyMap()
+    override var block: Block? = null
 
     override fun toString(): String {
         return paramMap.toString() + "\n"
