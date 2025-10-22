@@ -1,7 +1,7 @@
 package semanticanalizer.ast.member
 
-import semanticanalizer.ast.ASTContext
+import semanticanalizer.ast.ASTMember
 
-interface Expression: ASTContext {
+interface Expression: ASTMember {
 
 }

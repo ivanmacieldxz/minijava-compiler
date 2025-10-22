@@ -281,20 +281,6 @@ class SyntacticAnalyzerItrImpl(
                         NonTerminal.RETURN -> {
                             expectedElementsStack.addFirst(NonTerminal.OPTIONAL_EXPRESSION)
                             expectedElementsStack.addFirst(TokenType.RETURN)
-
-                            astBuilder.currentContext = Return(
-                                symbolTable.currentContext as Callable,
-                                astBuilder.currentContext as Sentence
-                            ).apply {
-                                when (val parentSentence = parentSentence) {
-                                    is Block -> {
-                                        parentSentence.childSentencesList.add(this)
-                                    }
-                                    is CompoundSentence -> {
-                                        parentSentence.body = this
-                                    }
-                                }
-                            }
                         }
 
                         NonTerminal.OPTIONAL_EXPRESSION -> {
@@ -312,21 +298,6 @@ class SyntacticAnalyzerItrImpl(
                             expectedElementsStack.addFirst(NonTerminal.EXPRESSION)
                             expectedElementsStack.addFirst(TokenType.LEFT_BRACKET)
                             expectedElementsStack.addFirst(TokenType.IF)
-
-                            astBuilder.currentContext = If(
-                                parentMember = symbolTable.currentContext as Callable,
-                                parentSentence = astBuilder.currentContext as Sentence
-                            ).apply {
-                                when (val parent = parentSentence) {
-                                    is Block -> {
-                                        parent.childSentencesList.add(this)
-                                    }
-                                    is CompoundSentence -> {
-                                        parent.body = this
-                                    }
-                                }
-                            }
-
                         }
 
                         NonTerminal.OPTIONAL_ELSE -> {
@@ -748,7 +719,7 @@ class SyntacticAnalyzerItrImpl(
                             } else {
                                 symbolTable.accumulator.expectedClosingBrackets--
 
-                                astBuilder.currentContext = (astBuilder.currentContext as? Sentence)
+                                astBuilder.currentContext = astBuilder.currentContext
                                     ?.parentSentence
 
                                 when (val astContext = astBuilder.currentContext) {
@@ -772,7 +743,46 @@ class SyntacticAnalyzerItrImpl(
 
                             }
 
-                            //TODO: sentencias vacías cuando el contexto es CompoundSentence
+                            astBuilder.currentContext = astBuilder.currentContext?.parentSentence
+
+                            when (val astContext = astBuilder.currentContext) {
+                                //si el padre es un if, else o while, subo otra vez el contexto
+                                is CompoundSentence -> {
+                                    astBuilder.currentContext = astContext.parentSentence
+                                }
+                            }
+                        }
+
+                        TokenType.IF -> {
+                            astBuilder.currentContext = If(
+                                parentMember = symbolTable.currentContext as Callable,
+                                parentSentence = astBuilder.currentContext as Sentence
+                            ).apply {
+                                when (val parent = parentSentence) {
+                                    is Block -> {
+                                        parent.childSentencesList.add(this)
+                                    }
+                                    is CompoundSentence -> {
+                                        parent.body = this
+                                    }
+                                }
+                            }
+                        }
+
+                        TokenType.RETURN -> {
+                            astBuilder.currentContext = Return(
+                                symbolTable.currentContext as Callable,
+                                astBuilder.currentContext as Sentence
+                            ).apply {
+                                when (val parentSentence = parentSentence) {
+                                    is Block -> {
+                                        parentSentence.childSentencesList.add(this)
+                                    }
+                                    is CompoundSentence -> {
+                                        parentSentence.body = this
+                                    }
+                                }
+                            }
                         }
 
                         else -> {}
