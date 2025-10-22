@@ -1,12 +1,11 @@
 package semanticanalizer.ast.member
 
-import semanticanalizer.ast.ASTContext
+import semanticanalizer.ast.ASTMember
 import semanticanalizer.stmember.Callable
 
-interface Sentence: ASTContext {
+interface Sentence: ASTMember {
 
     var parentMember: Callable
-    var parentSentence: Sentence?
 
     fun printItselfAndChildren(nestingLevel: Int)
 
