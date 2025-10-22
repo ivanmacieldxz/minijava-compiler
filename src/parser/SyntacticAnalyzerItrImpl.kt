@@ -304,20 +304,6 @@ class SyntacticAnalyzerItrImpl(
                             if (currentToken.inFirsts(currentStackElement)) {
                                 expectedElementsStack.addFirst(NonTerminal.SENTENCE)
                                 expectedElementsStack.addFirst(TokenType.ELSE)
-
-                                astBuilder.currentContext = Else(
-                                    parentMember = symbolTable.currentContext as Callable,
-                                    parentSentence = astBuilder.currentContext as Sentence
-                                ).apply {
-                                    when (val parent = parentSentence) {
-                                        is Block -> {
-                                            parent.childSentencesList.add(this)
-                                        }
-                                        is If -> {
-                                            parent.elseSentence = this
-                                        }
-                                    }
-                                }
                             } else if (currentToken.inNexts(currentStackElement).not()) {
                                 throwUnexpectedTerminalException(currentStackElement)
                             }
@@ -329,20 +315,6 @@ class SyntacticAnalyzerItrImpl(
                             expectedElementsStack.addFirst(NonTerminal.EXPRESSION)
                             expectedElementsStack.addFirst(TokenType.LEFT_BRACKET)
                             expectedElementsStack.addFirst(TokenType.WHILE)
-
-                            astBuilder.currentContext = While(
-                                parentMember = symbolTable.currentContext as Callable,
-                                parentSentence = astBuilder.currentContext as Sentence
-                            ).apply {
-                                when (val parent = parentSentence) {
-                                    is Block -> {
-                                        parent.childSentencesList.add(this)
-                                    }
-                                    is CompoundSentence -> {
-                                        parent.body = this
-                                    }
-                                }
-                            }
                         }
 
                         NonTerminal.EXPRESSION -> {
@@ -755,6 +727,38 @@ class SyntacticAnalyzerItrImpl(
 
                         TokenType.IF -> {
                             astBuilder.currentContext = If(
+                                parentMember = symbolTable.currentContext as Callable,
+                                parentSentence = astBuilder.currentContext as Sentence
+                            ).apply {
+                                when (val parent = parentSentence) {
+                                    is Block -> {
+                                        parent.childSentencesList.add(this)
+                                    }
+                                    is CompoundSentence -> {
+                                        parent.body = this
+                                    }
+                                }
+                            }
+                        }
+
+                        TokenType.ELSE -> {
+                            astBuilder.currentContext = Else(
+                                parentMember = symbolTable.currentContext as Callable,
+                                parentSentence = astBuilder.currentContext as Sentence
+                            ).apply {
+                                when (val parent = parentSentence) {
+                                    is Block -> {
+                                        parent.childSentencesList.add(this)
+                                    }
+                                    is If -> {
+                                        parent.elseSentence = this
+                                    }
+                                }
+                            }
+                        }
+
+                        TokenType.WHILE -> {
+                            astBuilder.currentContext = While(
                                 parentMember = symbolTable.currentContext as Callable,
                                 parentSentence = astBuilder.currentContext as Sentence
                             ).apply {
