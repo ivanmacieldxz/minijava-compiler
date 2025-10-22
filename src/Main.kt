@@ -30,8 +30,14 @@ fun main(args: Array<String>) {
         symbolTable.classMap.values.forEach { cls ->
             if ((cls.token.lexeme in SymbolTable.classesNames).not()) {
                 println("${cls.modifier.lexeme.takeIf { it != "" }?.plus(" ") ?: ""}class ${cls.token.lexeme}:")
+
+                if (cls.constructor.isDefaultConstructor().not()) {
+                    println("\tpublic ${cls.constructor.token.lexeme}:")
+                    cls.constructor.printBlock(2)
+                }
+
                 cls.methodMap.values.forEach {
-                    println("\t${it.modifier.lexeme.takeIf { it != "" }?.plus(" ") ?: ""}${it.typeToken.lexeme} " +
+                    println("\t${it.modifier.lexeme.takeIf { lexeme -> lexeme != "" }?.plus(" ") ?: ""}${it.typeToken.lexeme} " +
                             "${it.token.lexeme}:")
                     it.printBlock(2)
                 }

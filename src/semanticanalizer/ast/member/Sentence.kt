@@ -2,6 +2,7 @@ package semanticanalizer.ast.member
 
 import semanticanalizer.ast.ASTMember
 import semanticanalizer.stmember.Callable
+import utils.Token
 
 interface Sentence: ASTMember {
 
@@ -13,6 +14,7 @@ interface Sentence: ASTMember {
 
 class Block(
     override var parentMember: Callable,
+    override var token: Token,
     override var parentSentence: Sentence? = null
 ): Sentence {
 
@@ -31,7 +33,11 @@ interface CompoundSentence: Sentence {
     var body: Sentence?
 }
 
-class If(override var parentMember: Callable, override var parentSentence: Sentence?): CompoundSentence {
+class If(
+    override var parentMember: Callable,
+    override var token: Token,
+    override var parentSentence: Sentence?
+): CompoundSentence {
     var condition: Expression? = null
     override var body: Sentence? = null
     var elseSentence: Else? = null
@@ -43,7 +49,11 @@ class If(override var parentMember: Callable, override var parentSentence: Sente
     }
 }
 
-class Else(override var parentMember: Callable, override var parentSentence: Sentence?): CompoundSentence {
+class Else(
+    override var parentMember: Callable,
+    override var token: Token,
+    override var parentSentence: Sentence?
+): CompoundSentence {
 
     override var body: Sentence? = null
 
@@ -53,7 +63,11 @@ class Else(override var parentMember: Callable, override var parentSentence: Sen
     }
 }
 
-class While(override var parentMember: Callable, override var parentSentence: Sentence?): CompoundSentence {
+class While(
+    override var parentMember: Callable,
+    override var token: Token,
+    override var parentSentence: Sentence?
+): CompoundSentence {
 
     var condition: Expression? = null
     override var body: Sentence? = null
@@ -64,7 +78,11 @@ class While(override var parentMember: Callable, override var parentSentence: Se
     }
 }
 
-class Return(override var parentMember: Callable, override var parentSentence: Sentence?): CompoundSentence {
+class Return(
+    override var parentMember: Callable,
+    override var token: Token,
+    override var parentSentence: Sentence?
+): CompoundSentence {
     override var body: Sentence? = null
 
     override fun printItselfAndChildren(nestingLevel: Int) {

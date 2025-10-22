@@ -572,8 +572,17 @@ class SyntacticAnalyzerItrImpl(
 
                                         currentContext.parentClass.constructor = currentContext
                                         currentContext.paramMap = symbolTable.accumulator.params
+                                        currentContext.declarationCompleted = true
 
                                         symbolTable.accumulator.clear()
+
+                                        astBuilder.currentContext = Block(
+                                            currentContext,
+                                            prevToken,
+                                            astBuilder.currentContext as? Sentence
+                                        ).also {
+                                            currentContext.block = it
+                                        }
                                     }
                                     is Method -> {
                                         val throwIMDE = symbolTable.accumulator.modifier.type == TokenType.ABSTRACT
@@ -588,12 +597,11 @@ class SyntacticAnalyzerItrImpl(
 
                                         astBuilder.currentContext = Block(
                                             currentContext,
+                                            prevToken,
                                             astBuilder.currentContext as? Sentence
-                                        )
-
-                                        val currentBlock = astBuilder.currentContext as Block
-
-                                        currentContext.block = currentContext.block ?: currentBlock
+                                        ).also {
+                                            currentContext.block = currentContext.block ?: it
+                                        }
                                     }
                                 }
                             } else {
@@ -603,17 +611,16 @@ class SyntacticAnalyzerItrImpl(
                                     is Callable -> {
                                         astBuilder.currentContext = Block(
                                             currentContext,
+                                            prevToken,
                                             astBuilder.currentContext as? Sentence
-                                        )
-
-                                        val currentBlock = astBuilder.currentContext as Block
-
-                                        when (val currentBlockParent = currentBlock.parentSentence) {
-                                            is Block -> {
-                                                currentBlockParent.childSentencesList.add(currentBlock)
-                                            }
-                                            is CompoundSentence -> {
-                                                currentBlockParent.body = currentBlock
+                                        ).also {
+                                            when (val currentBlockParent = it.parentSentence) {
+                                                is Block -> {
+                                                    currentBlockParent.childSentencesList.add(it)
+                                                }
+                                                is CompoundSentence -> {
+                                                    currentBlockParent.body = it
+                                                }
                                             }
                                         }
                                     }
@@ -727,15 +734,16 @@ class SyntacticAnalyzerItrImpl(
 
                         TokenType.IF -> {
                             astBuilder.currentContext = If(
-                                parentMember = symbolTable.currentContext as Callable,
-                                parentSentence = astBuilder.currentContext as Sentence
-                            ).apply {
-                                when (val parent = parentSentence) {
+                                symbolTable.currentContext as Callable,
+                                prevToken,
+                                astBuilder.currentContext as Sentence
+                            ).also {
+                                when (val parent = it.parentSentence) {
                                     is Block -> {
-                                        parent.childSentencesList.add(this)
+                                        parent.childSentencesList.add(it)
                                     }
                                     is CompoundSentence -> {
-                                        parent.body = this
+                                        parent.body = it
                                     }
                                 }
                             }
@@ -743,15 +751,16 @@ class SyntacticAnalyzerItrImpl(
 
                         TokenType.ELSE -> {
                             astBuilder.currentContext = Else(
-                                parentMember = symbolTable.currentContext as Callable,
-                                parentSentence = astBuilder.currentContext as Sentence
-                            ).apply {
-                                when (val parent = parentSentence) {
+                                symbolTable.currentContext as Callable,
+                                prevToken,
+                                astBuilder.currentContext as Sentence
+                            ).also {
+                                when (val parent = it.parentSentence) {
                                     is Block -> {
-                                        parent.childSentencesList.add(this)
+                                        parent.childSentencesList.add(it)
                                     }
                                     is If -> {
-                                        parent.elseSentence = this
+                                        parent.elseSentence = it
                                     }
                                 }
                             }
@@ -759,15 +768,16 @@ class SyntacticAnalyzerItrImpl(
 
                         TokenType.WHILE -> {
                             astBuilder.currentContext = While(
-                                parentMember = symbolTable.currentContext as Callable,
-                                parentSentence = astBuilder.currentContext as Sentence
-                            ).apply {
-                                when (val parent = parentSentence) {
+                                symbolTable.currentContext as Callable,
+                                prevToken,
+                                astBuilder.currentContext as Sentence
+                            ).also {
+                                when (val parent = it.parentSentence) {
                                     is Block -> {
-                                        parent.childSentencesList.add(this)
+                                        parent.childSentencesList.add(it)
                                     }
                                     is CompoundSentence -> {
-                                        parent.body = this
+                                        parent.body = it
                                     }
                                 }
                             }
@@ -776,14 +786,15 @@ class SyntacticAnalyzerItrImpl(
                         TokenType.RETURN -> {
                             astBuilder.currentContext = Return(
                                 symbolTable.currentContext as Callable,
+                                prevToken,
                                 astBuilder.currentContext as Sentence
-                            ).apply {
-                                when (val parentSentence = parentSentence) {
+                            ).also {
+                                when (val parent = it.parentSentence) {
                                     is Block -> {
-                                        parentSentence.childSentencesList.add(this)
+                                        parent.childSentencesList.add(it)
                                     }
                                     is CompoundSentence -> {
-                                        parentSentence.body = this
+                                        parent.body = it
                                     }
                                 }
                             }

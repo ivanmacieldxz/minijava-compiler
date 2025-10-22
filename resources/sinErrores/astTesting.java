@@ -1,5 +1,25 @@
 class X {
 
+    public X() {
+        if (true) {
+            if (true) {
+
+            } else {
+
+            }
+        } else {
+            if (true) {
+
+            } else {
+
+            }
+        }
+
+        if (false) {
+
+        }
+    }
+
     final void x(int x, int y, int z) {
         if (true) {
 
