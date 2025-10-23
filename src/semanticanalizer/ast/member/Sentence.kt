@@ -7,8 +7,8 @@ import utils.Token
 interface Sentence: ASTMember {
 
     var parentMember: Callable
-
-    fun printItselfAndChildren(nestingLevel: Int)
+    var token: Token
+    var parentSentence: Sentence?
 
 }
 
@@ -18,11 +18,11 @@ class Block(
     override var parentSentence: Sentence? = null
 ): Sentence {
 
-    var childSentencesList = mutableListOf<Sentence>()
+    var childrenList = mutableListOf<ASTMember>()
 
     override fun printItselfAndChildren(nestingLevel: Int) {
         println("\t".repeat(nestingLevel) + "{")
-        childSentencesList.forEach {
+        childrenList.forEach {
             it.printItselfAndChildren(nestingLevel + 1)
         }
         println("\t".repeat(nestingLevel) + "}")
@@ -82,8 +82,8 @@ class Return(
     override var parentMember: Callable,
     override var token: Token,
     override var parentSentence: Sentence?
-): CompoundSentence {
-    override var body: Sentence? = null
+): Sentence {
+    var body: Expression? = null
 
     override fun printItselfAndChildren(nestingLevel: Int) {
         println("\t".repeat(nestingLevel) + "return <expresion>;")

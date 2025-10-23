@@ -20,12 +20,15 @@ import semanticanalizer.stmember.Object
 import semanticanalizer.stmember.RepeatedDeclarationException
 import semanticanalizer.SymbolTable.Predefined
 import semanticanalizer.ast.ASTBuilder
+import semanticanalizer.ast.member.BasicExpression
 import semanticanalizer.ast.member.Block
 import semanticanalizer.ast.member.CompoundSentence
 import semanticanalizer.ast.member.Else
 import semanticanalizer.ast.member.If
+import semanticanalizer.ast.member.Primitive
 import semanticanalizer.ast.member.Return
 import semanticanalizer.ast.member.Sentence
+import semanticanalizer.ast.member.UnaryOperator
 import semanticanalizer.ast.member.While
 import symbolTable
 import utils.NonTerminal
@@ -357,8 +360,31 @@ class SyntacticAnalyzerItrImpl(
                         NonTerminal.BASIC_EXPRESSION -> {
                             expectedElementsStack.addFirst(NonTerminal.OPERAND)
 
+                            astBuilder.currentContext = BasicExpression(
+                                astBuilder.currentContext!!
+                            ).also {
+                                when (val parentNode = it.parentNode) {
+                                    is Block -> {
+                                        parentNode.childrenList.add(it)
+                                    }
+                                    is If -> {
+                                        parentNode.condition = it
+                                    }
+                                    is While -> {
+                                        parentNode.condition = it
+                                    }
+                                    is Return -> {
+                                        parentNode.body = it
+                                    }
+                                }
+                            }
+
                             if (currentToken.inFirsts(NonTerminal.UNARY_OPERATOR)) {
                                 expectedElementsStack.addFirst(NonTerminal.UNARY_OPERATOR)
+
+                                (astBuilder.currentContext as BasicExpression).operator = UnaryOperator(
+                                    currentToken
+                                )
                             }
                         }
 
@@ -367,10 +393,18 @@ class SyntacticAnalyzerItrImpl(
                         }
 
                         NonTerminal.OPERAND -> {
-                            if (currentToken.inFirsts(NonTerminal.PRIMITIVE)) {
+                            (astBuilder.currentContext as BasicExpression).operand = if (currentToken.inFirsts(NonTerminal.PRIMITIVE)) {
                                 expectedElementsStack.addFirst(NonTerminal.PRIMITIVE)
+
+                                Primitive(
+                                    parentNode = astBuilder.currentContext!!,
+                                    token = currentToken
+                                )
+
                             } else {
                                 expectedElementsStack.addFirst(NonTerminal.REFERENCE)
+
+                                TODO()
                             }
                         }
 
@@ -616,7 +650,7 @@ class SyntacticAnalyzerItrImpl(
                                         ).also {
                                             when (val currentBlockParent = it.parentSentence) {
                                                 is Block -> {
-                                                    currentBlockParent.childSentencesList.add(it)
+                                                    currentBlockParent.childrenList.add(it)
                                                 }
                                                 is CompoundSentence -> {
                                                     currentBlockParent.body = it
@@ -698,11 +732,14 @@ class SyntacticAnalyzerItrImpl(
                             } else {
                                 symbolTable.accumulator.expectedClosingBrackets--
 
-                                astBuilder.currentContext = astBuilder.currentContext
-                                    ?.parentSentence
+                                when (val prevASTContext = astBuilder.currentContext) {
+                                    is Sentence -> {
+                                        astBuilder.currentContext = prevASTContext.parentSentence
+                                    }
+                                }
 
                                 when (val astContext = astBuilder.currentContext) {
-                                    is CompoundSentence /* return */ -> {
+                                    is CompoundSentence, is Return -> {
                                         astBuilder.currentContext = astContext.parentSentence
                                     }
                                 }
@@ -721,12 +758,16 @@ class SyntacticAnalyzerItrImpl(
                                     )
 
                             }
+                            when (val prevASTContext = astBuilder.currentContext) {
+                                is Sentence -> {
+                                    astBuilder.currentContext = prevASTContext.parentSentence
+                                }
+                            }
 
-                            astBuilder.currentContext = astBuilder.currentContext?.parentSentence
 
                             when (val astContext = astBuilder.currentContext) {
                                 //si el padre es un if, else o while, subo otra vez el contexto
-                                is CompoundSentence -> {
+                                is CompoundSentence, is Return -> {
                                     astBuilder.currentContext = astContext.parentSentence
                                 }
                             }
@@ -740,7 +781,7 @@ class SyntacticAnalyzerItrImpl(
                             ).also {
                                 when (val parent = it.parentSentence) {
                                     is Block -> {
-                                        parent.childSentencesList.add(it)
+                                        parent.childrenList.add(it)
                                     }
                                     is CompoundSentence -> {
                                         parent.body = it
@@ -757,7 +798,7 @@ class SyntacticAnalyzerItrImpl(
                             ).also {
                                 when (val parent = it.parentSentence) {
                                     is Block -> {
-                                        parent.childSentencesList.add(it)
+                                        parent.childrenList.add(it)
                                     }
                                     is If -> {
                                         parent.elseSentence = it
@@ -774,7 +815,7 @@ class SyntacticAnalyzerItrImpl(
                             ).also {
                                 when (val parent = it.parentSentence) {
                                     is Block -> {
-                                        parent.childSentencesList.add(it)
+                                        parent.childrenList.add(it)
                                     }
                                     is CompoundSentence -> {
                                         parent.body = it
@@ -791,7 +832,7 @@ class SyntacticAnalyzerItrImpl(
                             ).also {
                                 when (val parent = it.parentSentence) {
                                     is Block -> {
-                                        parent.childSentencesList.add(it)
+                                        parent.childrenList.add(it)
                                     }
                                     is CompoundSentence -> {
                                         parent.body = it
