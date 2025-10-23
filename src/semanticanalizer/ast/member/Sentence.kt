@@ -43,7 +43,9 @@ class If(
     var elseSentence: Else? = null
 
     override fun printItselfAndChildren(nestingLevel: Int) {
-        println("\t".repeat(nestingLevel) + "if (<expresion>):")
+        print("\t".repeat(nestingLevel) + "if (")
+        condition?.printItselfAndChildren(0)
+        println("):")
         body?.printItselfAndChildren(nestingLevel + 1)
         elseSentence?.printItselfAndChildren(nestingLevel)
     }
@@ -73,7 +75,9 @@ class While(
     override var body: Sentence? = null
 
     override fun printItselfAndChildren(nestingLevel: Int) {
-        println("\t".repeat(nestingLevel) + "while (<expresion>):")
+        print("\t".repeat(nestingLevel) + "while (")
+        condition?.printItselfAndChildren(0)
+        println("):")
         body?.printItselfAndChildren(nestingLevel + 1)
     }
 }
@@ -86,6 +90,8 @@ class Return(
     var body: Expression? = null
 
     override fun printItselfAndChildren(nestingLevel: Int) {
-        println("\t".repeat(nestingLevel) + "return <expresion>;")
+        print("\t".repeat(nestingLevel) + "return ")
+        body?.printItselfAndChildren(0)
+        println("")
     }
 }

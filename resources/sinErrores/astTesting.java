@@ -25,18 +25,18 @@ class X {
 
         }
         if (true) {
-            if (x) {
-                return "";
+            if (false) {
+                return 2;
             } else {
                 return 'a';
             }
-            if (x) {
+            if ('a') {
 
             }
-            if (x) {
+            if (1) {
 
             } else {
-                if (y) {
+                if (92231) {
 
                 } else {
 
@@ -46,14 +46,14 @@ class X {
         else {
 
         }
-        if (x) {
+        if (2) {
 
         }
-        while (x) {
+        while (3) {
 
         }
-        while (x) {
-            while (y) {
+        while (4) {
+            while (5) {
 
             }
         }

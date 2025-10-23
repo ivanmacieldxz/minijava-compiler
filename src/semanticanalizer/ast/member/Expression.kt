@@ -26,23 +26,21 @@ class BasicExpression(
     lateinit var operand: Operand
 
     override fun printItselfAndChildren(nestingLevel: Int) {
-        TODO("Not yet implemented")
+        print((operator?.token?.toString()?:"")+operand.token)
     }
 
 }
 
 interface Operand {
-
+    var token: Token
 }
 
 class Primitive(
     override var parentNode: ASTMember,
-    var token: Token
+    override var token: Token
 ): Operand, NonSentenceableExpression {
 
-    override fun printItselfAndChildren(nestingLevel: Int) {
-        TODO("Not yet implemented")
-    }
+    override fun printItselfAndChildren(nestingLevel: Int) {}
 
 }
 

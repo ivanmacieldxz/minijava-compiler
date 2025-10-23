@@ -399,7 +399,10 @@ class SyntacticAnalyzerItrImpl(
                                 Primitive(
                                     parentNode = astBuilder.currentContext!!,
                                     token = currentToken
-                                )
+                                ).also {
+                                    astBuilder.currentContext =
+                                        (astBuilder.currentContext as BasicExpression).parentNode
+                                }
 
                             } else {
                                 expectedElementsStack.addFirst(NonTerminal.REFERENCE)
