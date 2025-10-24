@@ -377,12 +377,13 @@ class SyntacticAnalyzerItrImpl(
                                     is If -> {
                                         if (parentNode.condition == null)
                                             parentNode.condition = it
-                                        else
-                                            parentNode.body == it
+                                        else {
+                                            parentNode.body = it
+                                        }
                                     }
                                     is Else -> {
                                         if (parentNode.body == null)
-                                            parentNode.body == it
+                                            parentNode.body = it
                                         else
                                             throw Exception("El else ya tiene una sentencia hija")
                                     }
@@ -390,7 +391,7 @@ class SyntacticAnalyzerItrImpl(
                                         if (parentNode.condition == null)
                                             parentNode.condition = it
                                         else if (parentNode.body == null)
-                                            parentNode.body == it
+                                            parentNode.body = it
                                         else
                                             throw Exception("El while ya tiene una sentencia hija")
                                     }

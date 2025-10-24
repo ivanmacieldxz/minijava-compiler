@@ -24,13 +24,15 @@ class Block(
         println("\t".repeat(nestingLevel) + "{")
         childrenList.forEach {
             it.printItselfAndChildren(nestingLevel + 1)
+            if (it is Expression)
+                println()
         }
         println("\t".repeat(nestingLevel) + "}")
     }
 }
 
 interface CompoundSentence: Sentence {
-    var body: Sentence?
+    var body: ASTMember?
 }
 
 class If(
@@ -39,7 +41,7 @@ class If(
     override var parentSentence: Sentence?
 ): CompoundSentence {
     var condition: Expression? = null
-    override var body: Sentence? = null
+    override var body: ASTMember? = null
     var elseSentence: Else? = null
 
     override fun printItselfAndChildren(nestingLevel: Int) {
@@ -47,6 +49,8 @@ class If(
         condition?.printItselfAndChildren(0)
         println("):")
         body?.printItselfAndChildren(nestingLevel + 1)
+        if (body is Expression)
+            println()
         elseSentence?.printItselfAndChildren(nestingLevel)
     }
 }
@@ -57,11 +61,13 @@ class Else(
     override var parentSentence: Sentence?
 ): CompoundSentence {
 
-    override var body: Sentence? = null
+    override var body: ASTMember? = null
 
     override fun printItselfAndChildren(nestingLevel: Int) {
         println("\t".repeat(nestingLevel) + "else: ")
         body?.printItselfAndChildren(nestingLevel + 1)
+        if (body is Expression)
+            println()
     }
 }
 
@@ -72,13 +78,15 @@ class While(
 ): CompoundSentence {
 
     var condition: Expression? = null
-    override var body: Sentence? = null
+    override var body: ASTMember? = null
 
     override fun printItselfAndChildren(nestingLevel: Int) {
         print("\t".repeat(nestingLevel) + "while (")
         condition?.printItselfAndChildren(0)
         println("):")
         body?.printItselfAndChildren(nestingLevel + 1)
+        if (body is Expression)
+            println()
     }
 }
 
@@ -92,6 +100,6 @@ class Return(
     override fun printItselfAndChildren(nestingLevel: Int) {
         print("\t".repeat(nestingLevel) + "return ")
         body?.printItselfAndChildren(0)
-        println("")
+        println()
     }
 }

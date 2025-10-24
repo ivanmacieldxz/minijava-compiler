@@ -1,7 +1,8 @@
 class X {
 
     public X() {
-        if (true);
+        if (true)
+            false;
         false;
     }
 
