@@ -23,8 +23,11 @@ import semanticanalizer.ast.ASTBuilder
 import semanticanalizer.ast.member.BasicExpression
 import semanticanalizer.ast.member.Block
 import semanticanalizer.ast.member.CompoundSentence
+import semanticanalizer.ast.member.ConstructorCall
 import semanticanalizer.ast.member.Else
 import semanticanalizer.ast.member.If
+import semanticanalizer.ast.member.LiteralPrimary
+import semanticanalizer.ast.member.ParenthesizedExpression
 import semanticanalizer.ast.member.Primitive
 import semanticanalizer.ast.member.Return
 import semanticanalizer.ast.member.Sentence
@@ -350,6 +353,10 @@ class SyntacticAnalyzerItrImpl(
                                 expectedElementsStack.addFirst(NonTerminal.BINARY_OPERATOR)
                             } else if (currentToken.inNexts(currentStackElement).not()) {
                                 throwUnexpectedTerminalException(currentStackElement)
+                            } else {
+                                //TODO: revisar cuando tenga expresiones básicas como hijas de otra cosa (expresion binaria creería)
+                                astBuilder.currentContext =
+                                    (astBuilder.currentContext as BasicExpression).parentNode
                             }
                         }
 
@@ -368,13 +375,30 @@ class SyntacticAnalyzerItrImpl(
                                         parentNode.childrenList.add(it)
                                     }
                                     is If -> {
-                                        parentNode.condition = it
+                                        if (parentNode.condition == null)
+                                            parentNode.condition = it
+                                        else
+                                            parentNode.body == it
+                                    }
+                                    is Else -> {
+                                        if (parentNode.body == null)
+                                            parentNode.body == it
+                                        else
+                                            throw Exception("El else ya tiene una sentencia hija")
                                     }
                                     is While -> {
-                                        parentNode.condition = it
+                                        if (parentNode.condition == null)
+                                            parentNode.condition = it
+                                        else if (parentNode.body == null)
+                                            parentNode.body == it
+                                        else
+                                            throw Exception("El while ya tiene una sentencia hija")
                                     }
                                     is Return -> {
                                         parentNode.body = it
+                                    }
+                                    is ParenthesizedExpression -> {
+                                        parentNode.expression = it
                                     }
                                 }
                             }
@@ -393,21 +417,15 @@ class SyntacticAnalyzerItrImpl(
                         }
 
                         NonTerminal.OPERAND -> {
-                            (astBuilder.currentContext as BasicExpression).operand = if (currentToken.inFirsts(NonTerminal.PRIMITIVE)) {
+                            if (currentToken.inFirsts(NonTerminal.PRIMITIVE)) {
                                 expectedElementsStack.addFirst(NonTerminal.PRIMITIVE)
 
-                                Primitive(
-                                    parentNode = astBuilder.currentContext!!,
+                                (astBuilder.currentContext as BasicExpression).operand = Primitive(
                                     token = currentToken
-                                ).also {
-                                    astBuilder.currentContext =
-                                        (astBuilder.currentContext as BasicExpression).parentNode
-                                }
+                                )
 
                             } else {
                                 expectedElementsStack.addFirst(NonTerminal.REFERENCE)
-
-                                TODO()
                             }
                         }
 
@@ -438,7 +456,20 @@ class SyntacticAnalyzerItrImpl(
                                 expectedElementsStack.addFirst(NonTerminal.STATIC_METHOD_CALL)
                             } else if (currentToken.inFirsts(NonTerminal.PARENTHESIZED_EXPRESSION)) {
                                 expectedElementsStack.addFirst(NonTerminal.PARENTHESIZED_EXPRESSION)
+
+                                (astBuilder.currentContext as BasicExpression).apply {
+                                    operand = ParenthesizedExpression(
+                                        this
+                                    )
+                                    astBuilder.currentContext = operand
+                                }
                             } else {
+                                //strLit o this
+
+                                (astBuilder.currentContext as BasicExpression).operand = LiteralPrimary(
+                                    currentToken
+                                )
+
                                 matchAnyInFirst(currentStackElement)
                             }
                         }
@@ -453,13 +484,22 @@ class SyntacticAnalyzerItrImpl(
                                 expectedElementsStack.addFirst(NonTerminal.ACTUAL_ARGUMENTS)
                             } else if (currentToken.inNexts(currentStackElement).not()) {
                                 throwUnexpectedTerminalException(currentStackElement)
+                            } else {
+                                //si no está en los primeros, pero sí en los siguientes, entonces era un acceso a var, no a met
+
                             }
                         }
 
                         NonTerminal.CONSTRUCTOR_CALL -> {
                             expectedElementsStack.addFirst(NonTerminal.ACTUAL_ARGUMENTS)
-                            expectedElementsStack.addFirst(TokenType.CLASS_IDENTIFIER)
-                            expectedElementsStack.addFirst(TokenType.NEW)
+
+                            match(TokenType.NEW)
+
+                            val token = matchAndReturn(TokenType.CLASS_IDENTIFIER)
+
+                            (astBuilder.currentContext as BasicExpression).operand = ConstructorCall(
+                                token
+                            )
                         }
 
                         NonTerminal.PARENTHESIZED_EXPRESSION -> {
@@ -702,19 +742,16 @@ class SyntacticAnalyzerItrImpl(
 
                         }
 
-                        TokenType.COMMA, TokenType.RIGHT_BRACKET -> {
-                            when (val currentContext = symbolTable.currentContext) {
-                                is FormalArgument -> {
-                                    symbolTable.accumulator.params.putIfAbsentOrError(
-                                        currentContext.token.lexeme,
-                                        currentContext
-                                    ) {
-                                        throw RepeatedDeclarationException(
-                                            "ya hay un parámetro declarado con ese nombre en el contexto actual",
-                                            currentContext.token
-                                        )
-                                    }
-                                    symbolTable.currentContext = currentContext.member
+                        TokenType.COMMA -> {
+                            processSTContextForSemicolonOrRightBracket()
+                        }
+
+                        TokenType.RIGHT_BRACKET -> {
+                            processSTContextForSemicolonOrRightBracket()
+
+                            when (val astContext = astBuilder.currentContext) {
+                                is ParenthesizedExpression -> {
+                                    astBuilder.currentContext = astContext.parentExpression
                                 }
                             }
                         }
@@ -762,7 +799,7 @@ class SyntacticAnalyzerItrImpl(
 
                             }
                             when (val prevASTContext = astBuilder.currentContext) {
-                                is Sentence -> {
+                                is CompoundSentence -> {
                                     astBuilder.currentContext = prevASTContext.parentSentence
                                 }
                             }
@@ -995,5 +1032,22 @@ class SyntacticAnalyzerItrImpl(
 
         this[key] = mutableSetOf(value)
         value.declarationCompleted = true
+    }
+
+    private fun processSTContextForSemicolonOrRightBracket() {
+        when (val currentContext = symbolTable.currentContext) {
+            is FormalArgument -> {
+                symbolTable.accumulator.params.putIfAbsentOrError(
+                    currentContext.token.lexeme,
+                    currentContext
+                ) {
+                    throw RepeatedDeclarationException(
+                        "ya hay un parámetro declarado con ese nombre en el contexto actual",
+                        currentContext.token
+                    )
+                }
+                symbolTable.currentContext = currentContext.member
+            }
+        }
     }
 }

@@ -1,42 +1,29 @@
 class X {
 
     public X() {
-        if (true) {
-            if (true) {
-
-            } else {
-
-            }
-        } else {
-            if (true) {
-
-            } else {
-
-            }
-        }
-
-        if (false) {
-
-        }
+        if (true);
+        false;
     }
 
     final void x(int x, int y, int z) {
-        if (true) {
+        new String();
+
+        if ((("true"))) {
 
         }
         if (true) {
             if (false) {
-                return 2;
+                return +2;
             } else {
-                return 'a';
+                return -'a';
             }
-            if ('a') {
+            if (++'a') {
 
             }
-            if (1) {
+            if (this) {
 
             } else {
-                if (92231) {
+                if ("92231") {
 
                 } else {
 

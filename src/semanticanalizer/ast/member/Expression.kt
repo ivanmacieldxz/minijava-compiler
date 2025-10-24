@@ -7,8 +7,6 @@ interface Expression: ASTMember {
     var parentNode: ASTMember
 }
 
-interface NonSentenceableExpression: Expression {}
-
 class Assignment(
     override var parentNode: ASTMember,
     var token: Token
@@ -26,24 +24,82 @@ class BasicExpression(
     lateinit var operand: Operand
 
     override fun printItselfAndChildren(nestingLevel: Int) {
-        print((operator?.token?.toString()?:"")+operand.token)
+        print("\t".repeat(nestingLevel) + this)
     }
 
-}
-
-interface Operand {
-    var token: Token
-}
-
-class Primitive(
-    override var parentNode: ASTMember,
-    override var token: Token
-): Operand, NonSentenceableExpression {
-
-    override fun printItselfAndChildren(nestingLevel: Int) {}
+    override fun toString(): String {
+        return (operator?.token?.toString()?:"") + operand
+    }
 
 }
 
 class UnaryOperator(var token: Token) {
 
+}
+
+interface Operand: ASTMember {}
+
+interface TokenizedOperand: Operand {
+    var token: Token
+}
+
+class Primitive(
+    override var token: Token
+): TokenizedOperand {
+
+    override fun toString():String {
+        return token.lexeme
+    }
+
+    override fun printItselfAndChildren(nestingLevel: Int) {
+        TODO("Not yet implemented")
+    }
+}
+
+interface Primary : Operand {
+    override fun printItselfAndChildren(nestingLevel: Int) {
+        print(this)
+    }
+}
+
+class ParenthesizedExpression(var parentExpression: Expression): Primary {
+    var expression: Expression? = null
+
+
+    override fun toString(): String {
+        return "($expression)"
+    }
+}
+
+class LiteralPrimary(override var token: Token): Primary, TokenizedOperand {
+    override fun toString():String {
+        return token.lexeme
+    }
+}
+
+class VariableAccess(
+    override var token: Token
+): Primary, TokenizedOperand {
+
+}
+
+class MethodAccess(
+    override var token: Token
+): Primary, TokenizedOperand {
+
+}
+
+class ConstructorCall(
+    override var token: Token
+): Primary, TokenizedOperand {
+    var arguments = mutableListOf<Expression>()
+
+    override fun toString(): String {
+        return "new $token()"
+    }
+}
+
+class StaticMethodCall(): Primary {
+    var calledClass: Token? = null
+    var calledMethod: Token? = null
 }
