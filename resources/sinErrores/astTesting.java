@@ -59,17 +59,21 @@ class X {
 
         } else
             if (2)
-                while (3)
-                    2;
+                while (3) {
+
+                }
 
 
         while (1) {
             while (1)
                 while (1)
-                    while (2)
-                        2;
+                    while (2){
+
+                    }
+            2;
             3;
         }
+
         return false;
     }
 }

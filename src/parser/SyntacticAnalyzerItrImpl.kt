@@ -798,9 +798,16 @@ class SyntacticAnalyzerItrImpl(
                                 }
 
                                 when (val astContext = astBuilder.currentContext) {
-                                    is CompoundSentence, is Return -> {
+                                    is CompoundSentence -> {
                                         astBuilder.currentContext = astContext.parentSentence
                                     }
+                                }
+
+                                var astContext = astBuilder.currentContext
+
+                                while (astContext is CompoundSentence && astContext.body != null) {
+                                    astContext = (astBuilder.currentContext as CompoundSentence).parentSentence
+                                    astBuilder.currentContext = astContext
                                 }
                             }
                         }
@@ -819,7 +826,7 @@ class SyntacticAnalyzerItrImpl(
 
                                 } else {
                                     when (val prevASTContext = astBuilder.currentContext) {
-                                        is CompoundSentence, is LocalVar -> {
+                                        is CompoundSentence, is LocalVar, is Return -> {
                                             astBuilder.currentContext = prevASTContext.parentSentence
                                         }
                                     }
