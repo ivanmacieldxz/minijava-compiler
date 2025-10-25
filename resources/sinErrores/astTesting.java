@@ -46,6 +46,30 @@ class X {
 
             }
         }
+
+        if (1) {
+            if (2)
+                if (3)
+                    if (4)
+                        3;
+            4;
+        }
+
+        if (1){
+
+        } else
+            if (2)
+                while (3)
+                    2;
+
+
+        while (1) {
+            while (1)
+                while (1)
+                    while (2)
+                        2;
+            3;
+        }
         return false;
     }
 }

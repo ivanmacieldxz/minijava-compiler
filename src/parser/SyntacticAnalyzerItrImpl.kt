@@ -20,6 +20,7 @@ import semanticanalizer.stmember.Object
 import semanticanalizer.stmember.RepeatedDeclarationException
 import semanticanalizer.SymbolTable.Predefined
 import semanticanalizer.ast.ASTBuilder
+import semanticanalizer.ast.ASTMember
 import semanticanalizer.ast.member.BasicExpression
 import semanticanalizer.ast.member.Block
 import semanticanalizer.ast.member.CompoundSentence
@@ -806,27 +807,29 @@ class SyntacticAnalyzerItrImpl(
 
                         TokenType.SEMICOLON -> {
                             val stContext = symbolTable.currentContext
-                            if (stContext is Method && stContext.declarationCompleted.not()) {
-                                if (symbolTable.accumulator.modifier.type == TokenType.ABSTRACT) {
-                                    addMethod()
-                                } else
-                                    throw InvalidMethodDeclarationException(
-                                        "declaración de método concreto sin cuerpo.",
-                                        stContext.token
-                                    )
+                            if (stContext is Callable){
+                                if (stContext.declarationCompleted.not()) {
+                                    if (symbolTable.accumulator.modifier.type == TokenType.ABSTRACT) {
+                                        addMethod()
+                                    } else
+                                        throw InvalidMethodDeclarationException(
+                                            "declaración de método concreto sin cuerpo.",
+                                            stContext.token
+                                        )
 
-                            }
-                            when (val prevASTContext = astBuilder.currentContext) {
-                                is CompoundSentence, is LocalVar -> {
-                                    astBuilder.currentContext = prevASTContext.parentSentence
-                                }
-                            }
+                                } else {
+                                    when (val prevASTContext = astBuilder.currentContext) {
+                                        is CompoundSentence, is LocalVar -> {
+                                            astBuilder.currentContext = prevASTContext.parentSentence
+                                        }
+                                    }
 
+                                    var astContext = astBuilder.currentContext
 
-                            when (val astContext = astBuilder.currentContext) {
-                                //si el padre es un if, else o while, subo otra vez el contexto
-                                is CompoundSentence, is Return -> {
-                                    astBuilder.currentContext = astContext.parentSentence
+                                    while (astContext is CompoundSentence && astContext.body != null) {
+                                        astContext = (astBuilder.currentContext as CompoundSentence).parentSentence
+                                        astBuilder.currentContext = astContext
+                                    }
                                 }
                             }
                         }
