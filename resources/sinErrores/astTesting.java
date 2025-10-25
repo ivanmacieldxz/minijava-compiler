@@ -9,8 +9,10 @@ class X {
     final void x(int x, int y, int z) {
         new String();
 
-        if ((("true"))) {
+        var x = 3;
 
+        if ((("true"))) {
+            var x = 2;
         }
         if (true) {
             if (false) {
@@ -18,9 +20,8 @@ class X {
             } else {
                 return -'a';
             }
-            if (++'a') {
-
-            }
+            if (++'a')
+                ;;;;
             if (this) {
 
             } else {

@@ -103,3 +103,18 @@ class Return(
         println()
     }
 }
+
+class LocalVar(
+    override var parentMember: Callable,
+    override var token: Token,
+    override var parentSentence: Sentence?
+): Sentence {
+    lateinit var type: Token
+    lateinit var expression: Expression
+
+    override fun printItselfAndChildren(nestingLevel: Int) {
+        println("\t".repeat(nestingLevel) + "var $token = $expression")
+
+    }
+
+}

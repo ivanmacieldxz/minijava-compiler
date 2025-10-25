@@ -27,6 +27,7 @@ import semanticanalizer.ast.member.ConstructorCall
 import semanticanalizer.ast.member.Else
 import semanticanalizer.ast.member.If
 import semanticanalizer.ast.member.LiteralPrimary
+import semanticanalizer.ast.member.LocalVar
 import semanticanalizer.ast.member.ParenthesizedExpression
 import semanticanalizer.ast.member.Primitive
 import semanticanalizer.ast.member.Return
@@ -281,7 +282,24 @@ class SyntacticAnalyzerItrImpl(
                             expectedElementsStack.addFirst(NonTerminal.COMPOUND_EXPRESSION)
                             expectedElementsStack.addFirst(TokenType.ASSIGNMENT)
                             expectedElementsStack.addFirst(TokenType.MET_VAR_IDENTIFIER)
-                            expectedElementsStack.addFirst(TokenType.VAR)
+
+                            match(TokenType.VAR)
+
+                            astBuilder.currentContext = LocalVar(
+                                parentMember = symbolTable.currentContext as Callable,
+                                token = currentToken,
+                                parentSentence = astBuilder.currentContext as Sentence
+                            ).also {
+                                when (val parent = it.parentSentence) {
+                                    is Block -> {
+                                        parent.childrenList.add(it)
+                                    }
+                                    is CompoundSentence -> {
+                                        throw Exception("No se admiten declaraciones de variables como única sentencia dentro de un if, else o while")
+                                    }
+                                }
+                            }
+
                         }
 
                         NonTerminal.RETURN -> {
@@ -384,21 +402,20 @@ class SyntacticAnalyzerItrImpl(
                                     is Else -> {
                                         if (parentNode.body == null)
                                             parentNode.body = it
-                                        else
-                                            throw Exception("El else ya tiene una sentencia hija")
                                     }
                                     is While -> {
                                         if (parentNode.condition == null)
                                             parentNode.condition = it
-                                        else if (parentNode.body == null)
-                                            parentNode.body = it
                                         else
-                                            throw Exception("El while ya tiene una sentencia hija")
+                                            parentNode.body = it
                                     }
                                     is Return -> {
                                         parentNode.body = it
                                     }
                                     is ParenthesizedExpression -> {
+                                        parentNode.expression = it
+                                    }
+                                    is LocalVar -> {
                                         parentNode.expression = it
                                     }
                                 }
@@ -800,7 +817,7 @@ class SyntacticAnalyzerItrImpl(
 
                             }
                             when (val prevASTContext = astBuilder.currentContext) {
-                                is CompoundSentence -> {
+                                is CompoundSentence, is LocalVar -> {
                                     astBuilder.currentContext = prevASTContext.parentSentence
                                 }
                             }
