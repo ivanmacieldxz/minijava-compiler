@@ -22,6 +22,7 @@ import semanticanalizer.SymbolTable.Predefined
 import semanticanalizer.ast.ASTBuilder
 import semanticanalizer.ast.ASTMember
 import semanticanalizer.ast.member.BasicExpression
+import semanticanalizer.ast.member.BinaryExpression
 import semanticanalizer.ast.member.Block
 import semanticanalizer.ast.member.CompoundSentence
 import semanticanalizer.ast.member.ConstructorCall
@@ -380,6 +381,33 @@ class SyntacticAnalyzerItrImpl(
                         }
 
                         NonTerminal.BINARY_OPERATOR -> {
+                            val basicExpression = (astBuilder.currentContext as BasicExpression)
+                            astBuilder.currentContext = BinaryExpression(
+                                basicExpression.parentNode,
+                                basicExpression
+                            ).also {
+                                when (val parent = it.parentNode) {
+                                    is Block ->  {
+                                        parent.childrenList.removeLast()
+                                    }
+                                    is If -> {
+
+                                    }
+                                    is While -> {
+
+                                    }
+                                    is Else -> {
+
+                                    }
+                                    is Return -> {
+
+                                    }
+                                    is BinaryExpression -> {
+
+                                    }
+                                }
+                            }
+
                             matchAnyInFirst(currentStackElement)
                         }
 

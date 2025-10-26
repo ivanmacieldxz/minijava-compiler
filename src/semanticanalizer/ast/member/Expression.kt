@@ -11,6 +11,21 @@ class Assignment(
     override var parentNode: ASTMember,
     var token: Token
 ): Expression {
+    lateinit var leftExpression: Expression
+    lateinit var rightExpression: Expression
+
+    override fun printItselfAndChildren(nestingLevel: Int) {
+        TODO("Not yet implemented")
+    }
+}
+
+class BinaryExpression(
+    override var parentNode: ASTMember,
+    var leftExpression: BasicExpression
+): Expression {
+    var operator: BinaryOperator? = null
+    var rightExpression: BinaryExpression? = null
+
     override fun printItselfAndChildren(nestingLevel: Int) {
         TODO("Not yet implemented")
     }
@@ -31,75 +46,4 @@ class BasicExpression(
         return (operator?.token?.toString()?:"") + operand
     }
 
-}
-
-class UnaryOperator(var token: Token) {
-
-}
-
-interface Operand: ASTMember {}
-
-interface TokenizedOperand: Operand {
-    var token: Token
-}
-
-class Primitive(
-    override var token: Token
-): TokenizedOperand {
-
-    override fun toString():String {
-        return token.lexeme
-    }
-
-    override fun printItselfAndChildren(nestingLevel: Int) {
-        TODO("Not yet implemented")
-    }
-}
-
-interface Primary : Operand {
-    override fun printItselfAndChildren(nestingLevel: Int) {
-        print(this)
-    }
-}
-
-class ParenthesizedExpression(var parentExpression: Expression): Primary {
-    var expression: Expression? = null
-
-
-    override fun toString(): String {
-        return "($expression)"
-    }
-}
-
-class LiteralPrimary(override var token: Token): Primary, TokenizedOperand {
-    override fun toString():String {
-        return token.lexeme
-    }
-}
-
-class VariableAccess(
-    override var token: Token
-): Primary, TokenizedOperand {
-
-}
-
-class MethodAccess(
-    override var token: Token
-): Primary, TokenizedOperand {
-
-}
-
-class ConstructorCall(
-    override var token: Token
-): Primary, TokenizedOperand {
-    var arguments = mutableListOf<Expression>()
-
-    override fun toString(): String {
-        return "new $token()"
-    }
-}
-
-class StaticMethodCall(): Primary {
-    var calledClass: Token? = null
-    var calledMethod: Token? = null
 }

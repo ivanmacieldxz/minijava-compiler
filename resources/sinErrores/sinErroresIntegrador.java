@@ -34,14 +34,12 @@ class B extends X {
 }
 
 abstract class Y extends Object {
-    Y x;
     abstract void s(int x, Y y);
     static void main() {
-        return x;
+        return 2;
     }
     static void n() {
-        Y.main();
-        return Y.main();
+        return 2;
     }
     void x() {
 
