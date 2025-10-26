@@ -23,10 +23,12 @@ import semanticanalizer.ast.ASTBuilder
 import semanticanalizer.ast.ASTMember
 import semanticanalizer.ast.member.BasicExpression
 import semanticanalizer.ast.member.BinaryExpression
+import semanticanalizer.ast.member.BinaryOperator
 import semanticanalizer.ast.member.Block
 import semanticanalizer.ast.member.CompoundSentence
 import semanticanalizer.ast.member.ConstructorCall
 import semanticanalizer.ast.member.Else
+import semanticanalizer.ast.member.Expression
 import semanticanalizer.ast.member.If
 import semanticanalizer.ast.member.LiteralPrimary
 import semanticanalizer.ast.member.LocalVar
@@ -374,9 +376,16 @@ class SyntacticAnalyzerItrImpl(
                             } else if (currentToken.inNexts(currentStackElement).not()) {
                                 throwUnexpectedTerminalException(currentStackElement)
                             } else {
-                                //TODO: revisar cuando tenga expresiones básicas como hijas de otra cosa (expresion binaria creería)
+                                //TODO: analizar casos antes de subir el contexto al padre
                                 astBuilder.currentContext =
                                     (astBuilder.currentContext as BasicExpression).parentNode
+
+                                var astContext = astBuilder.currentContext
+
+                                while (astContext is Expression) {
+                                    astContext = astContext.parentNode
+                                    astBuilder.currentContext = astContext
+                                }
                             }
                         }
 
@@ -384,26 +393,34 @@ class SyntacticAnalyzerItrImpl(
                             val basicExpression = (astBuilder.currentContext as BasicExpression)
                             astBuilder.currentContext = BinaryExpression(
                                 basicExpression.parentNode,
-                                basicExpression
+                                basicExpression,
+                                BinaryOperator(currentToken)
                             ).also {
+                                it.leftExpression.parentNode = it
                                 when (val parent = it.parentNode) {
                                     is Block ->  {
                                         parent.childrenList.removeLast()
                                     }
                                     is If -> {
-
+                                        if (parent.condition === it.leftExpression)
+                                            parent.condition = it
+                                        else
+                                            parent.body = it
                                     }
                                     is While -> {
-
+                                        if (parent.condition === it.leftExpression)
+                                            parent.condition = it
+                                        else
+                                            parent.body = it
                                     }
                                     is Else -> {
-
+                                        parent.body = it
                                     }
                                     is Return -> {
-
+                                        parent.body = it
                                     }
                                     is BinaryExpression -> {
-
+                                        parent.rightExpression = it
                                     }
                                 }
                             }
@@ -446,6 +463,9 @@ class SyntacticAnalyzerItrImpl(
                                     }
                                     is LocalVar -> {
                                         parentNode.expression = it
+                                    }
+                                    is BinaryExpression -> {
+                                        parentNode.rightExpression = it
                                     }
                                 }
                             }

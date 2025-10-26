@@ -21,13 +21,14 @@ class Assignment(
 
 class BinaryExpression(
     override var parentNode: ASTMember,
-    var leftExpression: BasicExpression
-): Expression {
+    var leftExpression: BasicExpression,
     var operator: BinaryOperator? = null
-    var rightExpression: BinaryExpression? = null
+): Expression {
+    lateinit var rightExpression: Expression
 
     override fun printItselfAndChildren(nestingLevel: Int) {
-        TODO("Not yet implemented")
+        print("" + leftExpression + operator)
+        rightExpression.printItselfAndChildren(0)
     }
 
 }

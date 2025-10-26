@@ -14,9 +14,9 @@ class X {
         if ((("true"))) {
             var x = 2;
         }
-        if (true) {
-            if (false) {
-                return +2;
+        if (true - false) {
+            if (false + true) {
+                return 2 + 2 - 2 + 2 * 3 - 7;
             } else {
                 return -'a';
             }
@@ -41,7 +41,7 @@ class X {
         while (3) {
 
         }
-        while (4) {
+        while (4 - this) {
             while (5) {
 
             }
@@ -49,7 +49,7 @@ class X {
 
         if (1) {
             if (2)
-                if (3)
+                if (3 + new String())
                     if (4)
                         3;
             4;
