@@ -20,7 +20,6 @@ import semanticanalizer.stmember.Object
 import semanticanalizer.stmember.RepeatedDeclarationException
 import semanticanalizer.SymbolTable.Predefined
 import semanticanalizer.ast.ASTBuilder
-import semanticanalizer.ast.ASTMember
 import semanticanalizer.ast.member.Assignment
 import semanticanalizer.ast.member.BasicExpression
 import semanticanalizer.ast.member.BinaryExpression
@@ -33,11 +32,14 @@ import semanticanalizer.ast.member.Expression
 import semanticanalizer.ast.member.If
 import semanticanalizer.ast.member.LiteralPrimary
 import semanticanalizer.ast.member.LocalVar
+import semanticanalizer.ast.member.MethodAccess
 import semanticanalizer.ast.member.ParenthesizedExpression
+import semanticanalizer.ast.member.Primary
 import semanticanalizer.ast.member.Primitive
 import semanticanalizer.ast.member.Return
 import semanticanalizer.ast.member.Sentence
 import semanticanalizer.ast.member.UnaryOperator
+import semanticanalizer.ast.member.VariableAccess
 import semanticanalizer.ast.member.While
 import symbolTable
 import utils.NonTerminal
@@ -575,6 +577,14 @@ class SyntacticAnalyzerItrImpl(
                                 expectedElementsStack.addFirst(NonTerminal.CHAINED_MET_VAR)
                             } else if (currentToken.inNexts(currentStackElement).not()) {
                                 throwUnexpectedTerminalException(currentStackElement)
+                            } else  {
+                                var currentMember = astBuilder.currentContext
+
+                                while (currentMember is Primary) {
+                                    currentMember = currentMember.parent
+                                    astBuilder.currentContext = currentMember
+                                }
+
                             }
                         }
 
@@ -597,9 +607,13 @@ class SyntacticAnalyzerItrImpl(
                             } else {
                                 //strLit o this
 
-                                (astBuilder.currentContext as BasicExpression).operand = LiteralPrimary(
-                                    currentToken
-                                )
+                                (astBuilder.currentContext as BasicExpression).apply {
+                                    operand = LiteralPrimary(
+                                        currentToken,
+                                        this
+                                    )
+                                    astBuilder.currentContext = operand
+                                }
 
                                 matchAnyInFirst(currentStackElement)
                             }
@@ -628,9 +642,12 @@ class SyntacticAnalyzerItrImpl(
 
                             val token = matchAndReturn(TokenType.CLASS_IDENTIFIER)
 
-                            (astBuilder.currentContext as BasicExpression).operand = ConstructorCall(
-                                token
-                            )
+                            (astBuilder.currentContext as BasicExpression).apply {
+                                operand = ConstructorCall(
+                                    token,
+                                    this
+                                )
+                            }
                         }
 
                         NonTerminal.PARENTHESIZED_EXPRESSION -> {
@@ -683,8 +700,24 @@ class SyntacticAnalyzerItrImpl(
                         NonTerminal.REST_OF_CHAINING -> {
                             if (currentToken.inFirsts(currentStackElement)) {
                                 expectedElementsStack.addFirst(NonTerminal.ACTUAL_ARGUMENTS)
+                                (astBuilder.currentContext as Primary).apply {
+                                    chained = MethodAccess(
+                                        astBuilder.chainedName,
+                                        this
+                                    )
+                                    astBuilder.currentContext = chained
+                                }
                             } else if (currentToken.inNexts(currentStackElement).not()) {
                                 throwUnexpectedTerminalException(currentStackElement)
+                            } else {
+                                //si está en los siguientes, es porque se trata de var encadenada
+                                (astBuilder.currentContext as Primary).apply {
+                                    chained = VariableAccess(
+                                        astBuilder.chainedName,
+                                        this
+                                    )
+                                    astBuilder.currentContext = chained
+                                }
                             }
                         }
 
@@ -846,11 +879,12 @@ class SyntacticAnalyzerItrImpl(
                                     if (currentContext.declarationCompleted.not())
                                         currentContext.token = prevToken
                                     else {
-                                        when (val astContext = astBuilder.currentContext) {
-                                            is LocalVar -> {
-                                                astContext.varName = prevToken
-                                            }
-                                        }
+                                        handleMetVarIdentifierForCallable(prevToken)
+                                    }
+                                }
+                                is Constructor -> {
+                                    if (currentContext.declarationCompleted) {
+                                        handleMetVarIdentifierForCallable(prevToken)
                                     }
                                 }
                                 is Class -> {
@@ -889,7 +923,7 @@ class SyntacticAnalyzerItrImpl(
 
                             when (val astContext = astBuilder.currentContext) {
                                 is ParenthesizedExpression -> {
-                                    astBuilder.currentContext = astContext.parentExpression
+                                    astBuilder.currentContext = astContext.parent
                                 }
                             }
                         }
@@ -1194,6 +1228,17 @@ class SyntacticAnalyzerItrImpl(
                     )
                 }
                 symbolTable.currentContext = currentContext.member
+            }
+        }
+    }
+
+    private fun handleMetVarIdentifierForCallable(token: Token) {
+        when (val astContext = astBuilder.currentContext) {
+            is LocalVar -> {
+                astContext.varName = token
+            }
+            is Primary -> {
+                astBuilder.chainedName = token
             }
         }
     }

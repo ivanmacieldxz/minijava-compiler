@@ -44,7 +44,7 @@ class X {
         while (3) {
 
         }
-        while (4 - this) {
+        while (4 - this.x.y.x.y()) {
             while (5) {
 
             }
