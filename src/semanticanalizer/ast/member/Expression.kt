@@ -9,13 +9,16 @@ interface Expression: ASTMember {
 
 class Assignment(
     override var parentNode: ASTMember,
+    var leftExpression: Expression,
     var token: Token
 ): Expression {
-    lateinit var leftExpression: Expression
+
     lateinit var rightExpression: Expression
 
     override fun printItselfAndChildren(nestingLevel: Int) {
-        TODO("Not yet implemented")
+        leftExpression.printItselfAndChildren(nestingLevel)
+        print(" = ")
+        rightExpression.printItselfAndChildren(0)
     }
 }
 
@@ -27,7 +30,7 @@ class BinaryExpression(
     lateinit var rightExpression: Expression
 
     override fun printItselfAndChildren(nestingLevel: Int) {
-        print("" + leftExpression + operator)
+        print("\t".repeat(nestingLevel) + leftExpression + operator)
         rightExpression.printItselfAndChildren(0)
     }
 

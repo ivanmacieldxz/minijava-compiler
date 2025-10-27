@@ -21,6 +21,7 @@ import semanticanalizer.stmember.RepeatedDeclarationException
 import semanticanalizer.SymbolTable.Predefined
 import semanticanalizer.ast.ASTBuilder
 import semanticanalizer.ast.ASTMember
+import semanticanalizer.ast.member.Assignment
 import semanticanalizer.ast.member.BasicExpression
 import semanticanalizer.ast.member.BinaryExpression
 import semanticanalizer.ast.member.BinaryOperator
@@ -287,7 +288,7 @@ class SyntacticAnalyzerItrImpl(
                             expectedElementsStack.addFirst(TokenType.ASSIGNMENT)
                             expectedElementsStack.addFirst(TokenType.MET_VAR_IDENTIFIER)
 
-                            match(TokenType.VAR)
+                            expectedElementsStack.addFirst(TokenType.VAR)
 
                             astBuilder.currentContext = LocalVar(
                                 parentMember = symbolTable.currentContext as Callable,
@@ -360,6 +361,63 @@ class SyntacticAnalyzerItrImpl(
                         }
 
                         NonTerminal.ASSIGNMENT_OPERATOR -> {
+                            val leftExpression = when (val parent = astBuilder.currentContext) {
+                                is Block -> {
+                                    parent.childrenList.last()
+                                }
+                                is If -> {
+                                    if (parent.body == null)
+                                        parent.condition
+                                    else
+                                        parent.body
+                                }
+                                is While -> {
+                                    if (parent.body == null)
+                                        parent.condition
+                                    else
+                                        parent.body
+                                }
+                                is Else -> {
+                                    parent.body
+                                }
+                                is Return -> {
+                                    parent.body
+                                }
+                                else -> {}
+                            }
+
+                            astBuilder.currentContext = Assignment(
+                                astBuilder.currentContext!!,
+                                leftExpression as Expression,
+                                currentToken
+                            ).also {
+                                it.leftExpression.parentNode = it
+                                when (val parent = it.parentNode) {
+                                    is Block ->  {
+                                        parent.childrenList.removeLast()
+                                        parent.childrenList.addLast(it)
+                                    }
+                                    is If -> {
+                                        if (parent.condition === it.leftExpression)
+                                            parent.condition = it
+                                        else
+                                            parent.body = it
+                                    }
+                                    is While -> {
+                                        if (parent.condition === it.leftExpression)
+                                            parent.condition = it
+                                        else
+                                            parent.body = it
+                                    }
+                                    is Else -> {
+                                        parent.body = it
+                                    }
+                                    is Return -> {
+                                        parent.body = it
+                                    }
+                                }
+                            }
+
                             expectedElementsStack.addFirst(TokenType.ASSIGNMENT)
                         }
 
@@ -376,7 +434,6 @@ class SyntacticAnalyzerItrImpl(
                             } else if (currentToken.inNexts(currentStackElement).not()) {
                                 throwUnexpectedTerminalException(currentStackElement)
                             } else {
-                                //TODO: analizar casos antes de subir el contexto al padre
                                 astBuilder.currentContext =
                                     (astBuilder.currentContext as BasicExpression).parentNode
 
@@ -400,6 +457,7 @@ class SyntacticAnalyzerItrImpl(
                                 when (val parent = it.parentNode) {
                                     is Block ->  {
                                         parent.childrenList.removeLast()
+                                        parent.childrenList.addLast(it)
                                     }
                                     is If -> {
                                         if (parent.condition === it.leftExpression)
@@ -420,6 +478,9 @@ class SyntacticAnalyzerItrImpl(
                                         parent.body = it
                                     }
                                     is BinaryExpression -> {
+                                        parent.rightExpression = it
+                                    }
+                                    is Assignment -> {
                                         parent.rightExpression = it
                                     }
                                 }
@@ -465,6 +526,9 @@ class SyntacticAnalyzerItrImpl(
                                         parentNode.expression = it
                                     }
                                     is BinaryExpression -> {
+                                        parentNode.rightExpression = it
+                                    }
+                                    is Assignment -> {
                                         parentNode.rightExpression = it
                                     }
                                 }
@@ -781,6 +845,13 @@ class SyntacticAnalyzerItrImpl(
                                 is Method -> {
                                     if (currentContext.declarationCompleted.not())
                                         currentContext.token = prevToken
+                                    else {
+                                        when (val astContext = astBuilder.currentContext) {
+                                            is LocalVar -> {
+                                                astContext.varName = prevToken
+                                            }
+                                        }
+                                    }
                                 }
                                 is Class -> {
                                     if (currentToken.type == TokenType.LEFT_BRACKET) {

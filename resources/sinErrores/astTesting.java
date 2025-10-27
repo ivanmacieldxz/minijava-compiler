@@ -11,10 +11,13 @@ class X {
 
         var x = 3;
 
+        2+2 = 3+3;
+
         if ((("true"))) {
             var x = 2;
         }
-        if (true - false) {
+        if (true - false = 3 + 1) {
+            2 = 3;
             if (false + true) {
                 return 2 + 2 - 2 + 2 * 3 - 7;
             } else {

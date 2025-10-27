@@ -111,9 +111,10 @@ class LocalVar(
 ): Sentence {
     lateinit var type: Token
     lateinit var expression: Expression
+    lateinit var varName: Token
 
     override fun printItselfAndChildren(nestingLevel: Int) {
-        println("\t".repeat(nestingLevel) + "var $token = $expression")
+        println("\t".repeat(nestingLevel) + "var $varName = $expression")
 
     }
 
