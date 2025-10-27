@@ -32,12 +32,13 @@ import semanticanalizer.ast.member.Expression
 import semanticanalizer.ast.member.If
 import semanticanalizer.ast.member.LiteralPrimary
 import semanticanalizer.ast.member.LocalVar
-import semanticanalizer.ast.member.MethodAccess
+import semanticanalizer.ast.member.MethodCall
 import semanticanalizer.ast.member.ParenthesizedExpression
 import semanticanalizer.ast.member.Primary
 import semanticanalizer.ast.member.Primitive
 import semanticanalizer.ast.member.Return
 import semanticanalizer.ast.member.Sentence
+import semanticanalizer.ast.member.StaticMethodCall
 import semanticanalizer.ast.member.UnaryOperator
 import semanticanalizer.ast.member.VariableAccess
 import semanticanalizer.ast.member.While
@@ -621,17 +622,31 @@ class SyntacticAnalyzerItrImpl(
 
                         NonTerminal.VAR_ACCESS_OR_MET_CALL -> {
                             expectedElementsStack.addFirst(NonTerminal.REST_OF_OPTIONAL_METHOD_CALL)
-                            expectedElementsStack.addFirst(TokenType.MET_VAR_IDENTIFIER)
+                            astBuilder.metVarName = matchAndReturn(TokenType.MET_VAR_IDENTIFIER)
                         }
 
                         NonTerminal.REST_OF_OPTIONAL_METHOD_CALL -> {
                             if (currentToken.inFirsts(currentStackElement)) {
                                 expectedElementsStack.addFirst(NonTerminal.ACTUAL_ARGUMENTS)
+
+                                (astBuilder.currentContext as BasicExpression).apply {
+                                    operand = MethodCall(
+                                        astBuilder.metVarName,
+                                        this
+                                    )
+                                    astBuilder.currentContext = operand
+                                }
                             } else if (currentToken.inNexts(currentStackElement).not()) {
                                 throwUnexpectedTerminalException(currentStackElement)
                             } else {
-                                //si no está en los primeros, pero sí en los siguientes, entonces era un acceso a var, no a met
-
+                                //era un acceso a variable
+                                (astBuilder.currentContext as BasicExpression).apply {
+                                    operand = VariableAccess(
+                                        astBuilder.metVarName,
+                                        this
+                                    )
+                                    astBuilder.currentContext = operand
+                                }
                             }
                         }
 
@@ -658,9 +673,19 @@ class SyntacticAnalyzerItrImpl(
 
                         NonTerminal.STATIC_METHOD_CALL -> {
                             expectedElementsStack.addFirst(NonTerminal.ACTUAL_ARGUMENTS)
-                            expectedElementsStack.addFirst(TokenType.MET_VAR_IDENTIFIER)
-                            expectedElementsStack.addFirst(TokenType.DOT)
-                            expectedElementsStack.addFirst(TokenType.CLASS_IDENTIFIER)
+
+                            val methodsClass = matchAndReturn(TokenType.CLASS_IDENTIFIER)
+                            match(TokenType.DOT)
+                            val calledMethod = matchAndReturn(TokenType.MET_VAR_IDENTIFIER)
+
+                            (astBuilder.currentContext as BasicExpression).apply {
+                                operand = StaticMethodCall(
+                                        astBuilder.currentContext!!,
+                                methodsClass,
+                                calledMethod
+                                )
+                                astBuilder.currentContext = operand
+                            }
                         }
 
                         NonTerminal.ACTUAL_ARGUMENTS -> {
@@ -701,8 +726,8 @@ class SyntacticAnalyzerItrImpl(
                             if (currentToken.inFirsts(currentStackElement)) {
                                 expectedElementsStack.addFirst(NonTerminal.ACTUAL_ARGUMENTS)
                                 (astBuilder.currentContext as Primary).apply {
-                                    chained = MethodAccess(
-                                        astBuilder.chainedName,
+                                    chained = MethodCall(
+                                        astBuilder.metVarName,
                                         this
                                     )
                                     astBuilder.currentContext = chained
@@ -713,7 +738,7 @@ class SyntacticAnalyzerItrImpl(
                                 //si está en los siguientes, es porque se trata de var encadenada
                                 (astBuilder.currentContext as Primary).apply {
                                     chained = VariableAccess(
-                                        astBuilder.chainedName,
+                                        astBuilder.metVarName,
                                         this
                                     )
                                     astBuilder.currentContext = chained
@@ -1238,7 +1263,7 @@ class SyntacticAnalyzerItrImpl(
                 astContext.varName = token
             }
             is Primary -> {
-                astBuilder.chainedName = token
+                astBuilder.metVarName = token
             }
         }
     }

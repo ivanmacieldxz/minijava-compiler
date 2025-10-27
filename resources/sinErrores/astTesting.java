@@ -4,10 +4,14 @@ class X {
         if (true)
             false;
         false;
+        X.a();
     }
 
     final void x(int x, int y, int z) {
         new String();
+
+        x.chainedXD();
+        x().chainedXD;
 
         var x = 3;
 

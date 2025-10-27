@@ -62,7 +62,7 @@ class VariableAccess(
     }
 }
 
-class MethodAccess(
+class MethodCall(
     override var token: Token,
     override var parent: ASTMember
 ): Primary, TokenizedOperand {
@@ -87,14 +87,15 @@ class ConstructorCall(
 }
 
 class StaticMethodCall(
-    override var parent: ASTMember
+    override var parent: ASTMember,
+    var calledClass: Token,
+    var calledMethod: Token
 ): Primary {
-    var calledClass: Token? = null
-    lateinit var calledMethod: Token
+
     lateinit var arguments: MutableList<Expression>
     override var chained: Primary? = null
 
     override fun toString():String {
-        return "$calledClass.$calledMethod($arguments)${chained?.let { ".$it" } ?: ""}"
+        return "$calledClass.$calledMethod(${""/*arguments*/})${chained?.let { ".$it" } ?: ""}"
     }
 }
