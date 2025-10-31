@@ -5,8 +5,11 @@ import parser.SyntacticAnalyzerItrImpl
 import parser.SyntacticException
 import semanticanalizer.stmember.SemanticException
 import semanticanalizer.SymbolTable
+import semanticanalizer.stmember.Declarable
+import semanticanalizer.stmember.Object
 import sourcemanager.SourceManager
 import sourcemanager.SourceManagerEfImpl
+import java.util.Stack
 
 lateinit var symbolTable: SymbolTable
 
@@ -27,22 +30,24 @@ fun main(args: Array<String>) {
         symbolTable.checkDeclarations()
         symbolTable.consolidate()
 
-        symbolTable.classMap.values.forEach { cls ->
-            if ((cls.token.lexeme in SymbolTable.classesNames).not()) {
-                println("${cls.modifier.lexeme.takeIf { it != "" }?.plus(" ") ?: ""}class ${cls.token.lexeme}:")
+//        symbolTable.classMap.values.forEach { cls ->
+//            if ((cls.token.lexeme in SymbolTable.classesNames).not()) {
+//                println("${cls.modifier.lexeme.takeIf { it != "" }?.plus(" ") ?: ""}class ${cls.token.lexeme}:")
+//
+//                if (cls.constructor.isDefaultConstructor().not()) {
+//                    println("\tpublic ${cls.constructor.token.lexeme}:")
+//                    cls.constructor.printBlock(2)
+//                }
+//
+//                cls.methodMap.values.forEach {
+//                    println("\t${it.modifier.lexeme.takeIf { lexeme -> lexeme != "" }?.plus(" ") ?: ""}${it.typeToken.lexeme} " +
+//                            "${it.token.lexeme}:")
+//                    it.printBlock(2)
+//                }
+//            }
+//        }
 
-                if (cls.constructor.isDefaultConstructor().not()) {
-                    println("\tpublic ${cls.constructor.token.lexeme}:")
-                    cls.constructor.printBlock(2)
-                }
-
-                cls.methodMap.values.forEach {
-                    println("\t${it.modifier.lexeme.takeIf { lexeme -> lexeme != "" }?.plus(" ") ?: ""}${it.typeToken.lexeme} " +
-                            "${it.token.lexeme}:")
-                    it.printBlock(2)
-                }
-            }
-        }
+        printAST()
     } catch (e: LexicalException) {
         print(e.errorReport())
         wereErrors = true
@@ -62,4 +67,20 @@ fun main(args: Array<String>) {
         println("[SinErrores]")
     }
 
+}
+
+private fun printAST() {
+
+    symbolTable.classMap.forEach { (className, classVal) ->
+        if (className !in SymbolTable.classesNames) {
+            println("class $className:")
+            classVal.methodMap.forEach { (methodName, method) ->
+                if (methodName !in Object.methodMap.keys) {
+                    println("\t${method.modifier.lexeme.takeIf { lexeme -> lexeme != "" }?.plus(" ") ?: ""}${method.typeToken.lexeme} " +
+                            "${method.token.lexeme}:")
+                    method.printSubAST()
+                }
+            }
+        }
+    }
 }

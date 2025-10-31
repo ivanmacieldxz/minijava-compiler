@@ -20,6 +20,14 @@ class Assignment(
         print(" = ")
         rightExpression.printItselfAndChildren(0)
     }
+
+    override fun printSubAST(nestingLevel: Int) {
+        println("\t".repeat(nestingLevel) + "Asignacion:")
+        leftExpression.printSubAST(nestingLevel + 1)
+        rightExpression.printSubAST(nestingLevel + 1)
+    }
+
+
 }
 
 class BinaryExpression(
@@ -32,6 +40,16 @@ class BinaryExpression(
     override fun printItselfAndChildren(nestingLevel: Int) {
         print("\t".repeat(nestingLevel) + leftExpression + operator)
         rightExpression.printItselfAndChildren(0)
+    }
+
+    override fun toString(): String {
+        return "$leftExpression$operator$rightExpression"
+    }
+
+    override fun printSubAST(nestingLevel: Int) {
+        println("\t".repeat(nestingLevel) + "Exp binaria ($operator):")
+        leftExpression.printSubAST(nestingLevel + 1)
+        rightExpression.printSubAST(nestingLevel + 1)
     }
 
 }
@@ -48,6 +66,11 @@ class BasicExpression(
 
     override fun toString(): String {
         return (operator?.token?.toString()?:"") + operand
+    }
+
+    override fun printSubAST(nestingLevel: Int) {
+        println("\t".repeat(nestingLevel) + "Exp básica:")
+        operand.printSubAST(nestingLevel + 1)
     }
 
 }

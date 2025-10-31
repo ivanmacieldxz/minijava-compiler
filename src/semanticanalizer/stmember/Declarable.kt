@@ -37,6 +37,10 @@ interface Callable: Declarable{
     fun printBlock(nestingLevel: Int) {
         block?.printItselfAndChildren(nestingLevel)
     }
+
+    fun printSubAST() {
+        block?.printSubAST(2)
+    }
 }
 
 interface Typed {

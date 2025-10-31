@@ -29,6 +29,12 @@ class Block(
         }
         println("\t".repeat(nestingLevel) + "}")
     }
+
+    override fun printSubAST(nestingLevel: Int) {
+        childrenList.forEach { children ->
+            children.printSubAST(nestingLevel + 1)
+        }
+    }
 }
 
 interface CompoundSentence: Sentence {
@@ -53,6 +59,13 @@ class If(
             println()
         elseSentence?.printItselfAndChildren(nestingLevel)
     }
+
+    override fun printSubAST(nestingLevel: Int) {
+        println("\t".repeat(nestingLevel) + "If:")
+        condition?.printSubAST(nestingLevel + 1)
+        body?.printSubAST(nestingLevel)
+        elseSentence?.printSubAST(nestingLevel)
+    }
 }
 
 class Else(
@@ -69,6 +82,11 @@ class Else(
         if (body is Expression)
             println()
     }
+
+    override fun printSubAST(nestingLevel: Int) {
+        println("\t".repeat(nestingLevel) + "Else:")
+        body?.printSubAST(nestingLevel)
+    }
 }
 
 class While(
@@ -84,9 +102,15 @@ class While(
         print("\t".repeat(nestingLevel) + "while (")
         condition?.printItselfAndChildren(0)
         println("):")
-        body?.printItselfAndChildren(nestingLevel + 1)
+        body?.printItselfAndChildren(nestingLevel)
         if (body is Expression)
             println()
+    }
+
+    override fun printSubAST(nestingLevel: Int) {
+        println("\t".repeat(nestingLevel) + "While:")
+        condition?.printSubAST(nestingLevel + 1)
+        body?.printSubAST(nestingLevel + 1)
     }
 }
 
@@ -102,6 +126,11 @@ class Return(
         body?.printItselfAndChildren(0)
         println()
     }
+
+    override fun printSubAST(nestingLevel: Int) {
+        println("\t".repeat(nestingLevel) + "Return:")
+        body?.printSubAST(nestingLevel + 1)
+    }
 }
 
 class LocalVar(
@@ -110,12 +139,17 @@ class LocalVar(
     override var parentSentence: Sentence?
 ): Sentence {
     lateinit var type: Token
-    lateinit var expression: Expression
     lateinit var varName: Token
+    lateinit var expression: Expression
 
     override fun printItselfAndChildren(nestingLevel: Int) {
         println("\t".repeat(nestingLevel) + "var $varName = $expression")
 
+    }
+
+    override fun printSubAST(nestingLevel: Int) {
+        println("\t".repeat(nestingLevel) + "Var local($varName):")
+        expression.printSubAST(nestingLevel + 1)
     }
 
 }

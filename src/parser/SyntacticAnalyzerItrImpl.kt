@@ -25,6 +25,7 @@ import semanticanalizer.ast.member.BasicExpression
 import semanticanalizer.ast.member.BinaryExpression
 import semanticanalizer.ast.member.BinaryOperator
 import semanticanalizer.ast.member.Block
+import semanticanalizer.ast.member.Call
 import semanticanalizer.ast.member.CompoundSentence
 import semanticanalizer.ast.member.ConstructorCall
 import semanticanalizer.ast.member.Else
@@ -418,6 +419,9 @@ class SyntacticAnalyzerItrImpl(
                                     is Return -> {
                                         parent.body = it
                                     }
+                                    is Call -> {
+                                        throw Exception("Assignments not allowed as actual arguments")
+                                    }
                                 }
                             }
 
@@ -486,6 +490,13 @@ class SyntacticAnalyzerItrImpl(
                                     is Assignment -> {
                                         parent.rightExpression = it
                                     }
+                                    is Call -> {
+                                        parent.arguments.removeLast()
+                                        parent.arguments.add(it)
+                                    }
+                                    is ParenthesizedExpression -> {
+                                        parent.expression = it
+                                    }
                                 }
                             }
 
@@ -533,6 +544,9 @@ class SyntacticAnalyzerItrImpl(
                                     }
                                     is Assignment -> {
                                         parentNode.rightExpression = it
+                                    }
+                                    is Call -> {
+                                        parentNode.arguments.add(it)
                                     }
                                 }
                             }
@@ -662,6 +676,7 @@ class SyntacticAnalyzerItrImpl(
                                     token,
                                     this
                                 )
+                                astBuilder.currentContext = operand
                             }
                         }
 
@@ -692,6 +707,9 @@ class SyntacticAnalyzerItrImpl(
                             expectedElementsStack.addFirst(TokenType.RIGHT_BRACKET)
                             expectedElementsStack.addFirst(NonTerminal.OPTIONAL_EXPRESSION_LIST)
                             expectedElementsStack.addFirst(TokenType.LEFT_BRACKET)
+
+                            val currentCall = astBuilder.currentContext as Call
+                            currentCall.arguments = mutableListOf()
                         }
 
                         NonTerminal.OPTIONAL_EXPRESSION_LIST -> {
@@ -940,17 +958,11 @@ class SyntacticAnalyzerItrImpl(
                         }
 
                         TokenType.COMMA -> {
-                            processSTContextForSemicolonOrRightBracket()
+                            processSTContextForCommaOrRightBracket()
                         }
 
                         TokenType.RIGHT_BRACKET -> {
-                            processSTContextForSemicolonOrRightBracket()
-
-                            when (val astContext = astBuilder.currentContext) {
-                                is ParenthesizedExpression -> {
-                                    astBuilder.currentContext = astContext.parent
-                                }
-                            }
+                            processSTContextForCommaOrRightBracket()
                         }
 
                         TokenType.RIGHT_CURLY_BRACKET -> {
@@ -1240,7 +1252,7 @@ class SyntacticAnalyzerItrImpl(
         value.declarationCompleted = true
     }
 
-    private fun processSTContextForSemicolonOrRightBracket() {
+    private fun processSTContextForCommaOrRightBracket() {
         when (val currentContext = symbolTable.currentContext) {
             is FormalArgument -> {
                 symbolTable.accumulator.params.putIfAbsentOrError(

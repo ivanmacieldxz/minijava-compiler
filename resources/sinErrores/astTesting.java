@@ -10,8 +10,11 @@ class X {
     final void x(int x, int y, int z) {
         new String();
 
-        x.chainedXD();
-        x().chainedXD;
+        ((x).a);
+
+        x.chainedXD(x);
+        (((((((1)))))));
+        x(x + y.y() + ( ( ( ( ( x ) ) ) ).a)).chainedXD;
 
         var x = 3;
 
