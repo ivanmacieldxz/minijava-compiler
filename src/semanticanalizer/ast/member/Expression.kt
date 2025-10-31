@@ -33,7 +33,7 @@ class Assignment(
 class BinaryExpression(
     override var parentNode: ASTMember,
     var leftExpression: BasicExpression,
-    var operator: BinaryOperator? = null
+    var operator: Token
 ): Expression {
     lateinit var rightExpression: Expression
 
@@ -57,7 +57,7 @@ class BinaryExpression(
 class BasicExpression(
     override var parentNode: ASTMember,
 ): Expression {
-    var operator: UnaryOperator? = null
+    var operator: Token? = null
     lateinit var operand: Operand
 
     override fun printItselfAndChildren(nestingLevel: Int) {
@@ -65,11 +65,12 @@ class BasicExpression(
     }
 
     override fun toString(): String {
-        return (operator?.token?.toString()?:"") + operand
+        return (operator?.toString()?:"") + operand
     }
 
     override fun printSubAST(nestingLevel: Int) {
         println("\t".repeat(nestingLevel) + "Exp básica:")
+        operator?.let { println("\t".repeat(nestingLevel) + "Operador unario: $operator") }
         operand.printSubAST(nestingLevel + 1)
     }
 

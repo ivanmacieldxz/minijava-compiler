@@ -23,7 +23,6 @@ import semanticanalizer.ast.ASTBuilder
 import semanticanalizer.ast.member.Assignment
 import semanticanalizer.ast.member.BasicExpression
 import semanticanalizer.ast.member.BinaryExpression
-import semanticanalizer.ast.member.BinaryOperator
 import semanticanalizer.ast.member.Block
 import semanticanalizer.ast.member.Call
 import semanticanalizer.ast.member.CompoundSentence
@@ -40,7 +39,6 @@ import semanticanalizer.ast.member.Primitive
 import semanticanalizer.ast.member.Return
 import semanticanalizer.ast.member.Sentence
 import semanticanalizer.ast.member.StaticMethodCall
-import semanticanalizer.ast.member.UnaryOperator
 import semanticanalizer.ast.member.VariableAccess
 import semanticanalizer.ast.member.While
 import symbolTable
@@ -458,7 +456,7 @@ class SyntacticAnalyzerItrImpl(
                             astBuilder.currentContext = BinaryExpression(
                                 basicExpression.parentNode,
                                 basicExpression,
-                                BinaryOperator(currentToken)
+                                currentToken
                             ).also {
                                 it.leftExpression.parentNode = it
                                 when (val parent = it.parentNode) {
@@ -554,9 +552,7 @@ class SyntacticAnalyzerItrImpl(
                             if (currentToken.inFirsts(NonTerminal.UNARY_OPERATOR)) {
                                 expectedElementsStack.addFirst(NonTerminal.UNARY_OPERATOR)
 
-                                (astBuilder.currentContext as BasicExpression).operator = UnaryOperator(
-                                    currentToken
-                                )
+                                (astBuilder.currentContext as BasicExpression).operator = currentToken
                             }
                         }
 
