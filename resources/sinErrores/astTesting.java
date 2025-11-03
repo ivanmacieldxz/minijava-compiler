@@ -14,7 +14,7 @@ class X {
 
         x.chainedXD(x);
         (((((((1)))))));
-        x(x + y.y() + ( ( ( ( ( x ) ) ) ).a)).chainedXD;
+        x(x + y.y() + ( ( ( ( ( x ).a ).b ).c ).d.a.c).e).chainedXD;
 
         var x = 3;
 

@@ -1,12 +1,13 @@
 package semanticanalizer.ast
 
+import semanticanalizer.ast.member.Block
+import symbolTable
 import utils.Token
 
 class ASTBuilder {
 
     var currentContext: ASTMember? = null
     lateinit var metVarName: Token
-
-    //TODO: método para añadir hijo al padre solo si este no tiene return, sino tirar exc
+    var currentBlock: Block? = null
 }
 

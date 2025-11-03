@@ -1,12 +1,21 @@
 package test;
 
 public class Test {
-    public static void main(String[] args) {
-//        if (true)
-//            var x = 1;
-//        else
-//            var y = 2;
-//
 
+    static class X {
+        public static void main(String[] args) {
+
+        }
     }
+
+    static class Y {
+        public static void main(String[] args) {
+
+            if (1 + new Y()) {
+
+            }
+
+        }
+    }
+
 }

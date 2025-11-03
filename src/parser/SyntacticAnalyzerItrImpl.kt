@@ -621,7 +621,8 @@ class SyntacticAnalyzerItrImpl(
                                 (astBuilder.currentContext as BasicExpression).apply {
                                     operand = LiteralPrimary(
                                         currentToken,
-                                        this
+                                        this,
+                                        symbolTable.currentClass
                                     )
                                     astBuilder.currentContext = operand
                                 }
@@ -642,7 +643,8 @@ class SyntacticAnalyzerItrImpl(
                                 (astBuilder.currentContext as BasicExpression).apply {
                                     operand = MethodCall(
                                         astBuilder.metVarName,
-                                        this
+                                        this,
+                                        symbolTable.currentClass
                                     )
                                     astBuilder.currentContext = operand
                                 }
@@ -651,9 +653,18 @@ class SyntacticAnalyzerItrImpl(
                             } else {
                                 //era un acceso a variable
                                 (astBuilder.currentContext as BasicExpression).apply {
+                                    if (parentNode is If && (parentNode as If).body == this
+                                        || parentNode is Else
+                                        || parentNode is While && (parentNode as While).body == this)
+                                        throw Exception("Solo se aceptan llamadas a métodos como " +
+                                                "sentencias únicas en If, Else o While")
+
                                     operand = VariableAccess(
                                         astBuilder.metVarName,
-                                        this
+                                        this,
+                                        symbolTable.currentClass,
+                                        symbolTable.currentContext as Callable,
+                                        astBuilder.currentBlock
                                     )
                                     astBuilder.currentContext = operand
                                 }
@@ -742,7 +753,8 @@ class SyntacticAnalyzerItrImpl(
                                 (astBuilder.currentContext as Primary).apply {
                                     chained = MethodCall(
                                         astBuilder.metVarName,
-                                        this
+                                        this,
+                                        symbolTable.currentClass
                                     )
                                     astBuilder.currentContext = chained
                                 }
@@ -753,7 +765,10 @@ class SyntacticAnalyzerItrImpl(
                                 (astBuilder.currentContext as Primary).apply {
                                     chained = VariableAccess(
                                         astBuilder.metVarName,
-                                        this
+                                        this,
+                                        symbolTable.currentClass,
+                                        symbolTable.currentContext as Callable,
+                                        astBuilder.currentBlock
                                     )
                                     astBuilder.currentContext = chained
                                 }
@@ -861,7 +876,12 @@ class SyntacticAnalyzerItrImpl(
                                             prevToken,
                                             astBuilder.currentContext as? Sentence
                                         ).also {
-                                            currentContext.block = it
+                                            currentContext.block = currentContext.block ?: it
+
+                                            it.visibleVariablesMap +=
+                                                astBuilder.currentBlock?.visibleVariablesMap ?: emptyMap()
+
+                                            astBuilder.currentBlock = it
                                         }
                                     }
                                     is Method -> {
@@ -881,6 +901,11 @@ class SyntacticAnalyzerItrImpl(
                                             astBuilder.currentContext as? Sentence
                                         ).also {
                                             currentContext.block = currentContext.block ?: it
+
+                                            it.visibleVariablesMap +=
+                                                astBuilder.currentBlock?.visibleVariablesMap ?: emptyMap()
+
+                                            astBuilder.currentBlock = it
                                         }
                                     }
                                 }
@@ -1269,6 +1294,7 @@ class SyntacticAnalyzerItrImpl(
         when (val astContext = astBuilder.currentContext) {
             is LocalVar -> {
                 astContext.varName = token
+                astBuilder.currentBlock!!.insertVarDeclaration(astContext)
             }
             is Primary -> {
                 astBuilder.metVarName = token
