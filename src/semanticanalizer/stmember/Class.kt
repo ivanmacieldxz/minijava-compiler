@@ -219,6 +219,9 @@ open class Class() : Modifiable {
 
     private fun hasExplicitParent() = parentClassToken != objectToken
 
+    fun owns(method: Method): Boolean {
+        return method.parentClass === this
+    }
 
     override fun toString(): String {
         var strRep = "$modifier $token.lexeme extends ${parentClassToken}"

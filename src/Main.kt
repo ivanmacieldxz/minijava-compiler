@@ -47,7 +47,10 @@ fun main(args: Array<String>) {
 //            }
 //        }
 
-        printAST()
+//        printAST()
+
+        symbolTable.checkSentences()
+
     } catch (e: LexicalException) {
         print(e.errorReport())
         wereErrors = true

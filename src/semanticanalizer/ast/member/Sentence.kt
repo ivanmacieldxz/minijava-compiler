@@ -52,18 +52,14 @@ class Block(
     override fun check() {
         childrenList.forEach {
             when (it) {
-                is BasicExpression -> {
-                    if (it.operand !is Call || it.operand is ConstructorCall)
-                        throw Exception("Solo se admiten llamadas a métodos como expresiones dentro de un bloque")
-                }
-            }
-            when (it) {
                 is Sentence -> {
                     it.check()
                 }
-                is Expression -> {
+                is BasicExpression -> {
+                    checkIsCall(it)
                     it.check(null)
                 }
+                is BinaryExpression -> throw Exception()
             }
         }
     }
@@ -107,12 +103,12 @@ class If(
             is Sentence -> {
                 if (body is LocalVar)
                     throw Exception("No se admiten declaraciones de variables como única sentencia de un if")
+
                 body.check()
             }
             is Expression -> {
                 if (body is BasicExpression)
-                    if (body.operand !is Call || body.operand is ConstructorCall)
-                        throw Exception("Solo se admiten llamadas a métodos como expresiones dentro de un bloque")
+                    checkIsCall(body)
 
                 body.check(null)
             }
@@ -149,8 +145,7 @@ class Else(
             }
             is Expression -> {
                 if (body is BasicExpression)
-                    if (body.operand !is Call || body.operand is ConstructorCall)
-                        throw Exception("Solo se admiten llamadas a métodos como expresiones dentro de un bloque")
+                    checkIsCall(body)
 
                 body.check(null)
             }
@@ -193,8 +188,7 @@ class While(
             }
             is Expression -> {
                 if (body is BasicExpression)
-                    if (body.operand !is Call || body.operand is ConstructorCall)
-                        throw Exception("Solo se admiten llamadas a métodos como expresiones dentro de un bloque")
+                    checkIsCall(body)
 
                 body.check(null)
             }
@@ -223,13 +217,16 @@ class Return(
     override fun check() {
         when (val parent = parentMember) {
             is Method -> {
-                if (body is Assignment)
-                    throw Exception("No se admiten asignaciones como expresiones de retorno")
-
-                (body as Expression).check(parent.typeToken.lexeme)
+                if (body == null && parent.typeToken.lexeme != "void")
+                    throw Exception("Se esperaba que devolviera un valor")
+                else if (body != null && parent.typeToken.lexeme == "void")
+                    throw Exception("No se puede devolver un valor en un método void")
+                else if (body != null && parent.typeToken.lexeme != "void")
+                    (body as Expression).check(parent.typeToken.lexeme)
             }
             is Constructor -> {
-                throw Exception("No se admite el uso de return dentro de un constructor")
+                if (body != null)
+                    throw Exception("No se admite el uso de return con un valor dentro de un constructor")
             }
         }
     }
@@ -238,7 +235,8 @@ class Return(
 class LocalVar(
     override var parentMember: Callable,
     override var token: Token,
-    override var parentSentence: Sentence?
+    override var parentSentence: Sentence?,
+    var containerBlock: Block
 ): Sentence {
     lateinit var type: String
     lateinit var varName: Token
@@ -255,7 +253,8 @@ class LocalVar(
     }
 
     override fun check() {
-        //TODO: chequear que el nombre no esté ya en uso
+        if (varName.lexeme in parentMember.paramMap || varName.lexeme in containerBlock.visibleVariablesMap)
+            throw Exception("Un parámetro o variable del mismo nombre ya es visible en este contexto")
 
         type = expression.check(null)
             ?: throw Exception("Una variable local no puede ser inicializada con null")
@@ -263,5 +262,78 @@ class LocalVar(
         if (type == "void")
             throw Exception("La expresión asignada no devuelve un valor")
     }
+
+}
+
+class Assignment(
+    override var token: Token,
+    override var parentMember: Callable,
+    override var parentSentence: Sentence?,
+    var leftExpression: Expression
+): Sentence {
+
+    lateinit var rightExpression: Expression
+
+    override fun printItselfAndChildren(nestingLevel: Int) {
+        leftExpression.printItselfAndChildren(nestingLevel)
+        print(" = ")
+        rightExpression.printItselfAndChildren(0)
+    }
+
+    override fun printSubAST(nestingLevel: Int) {
+        println("\t".repeat(nestingLevel) + "Asignacion:")
+        leftExpression.printSubAST(nestingLevel + 1)
+        rightExpression.printSubAST(nestingLevel + 1)
+    }
+
+    override fun check() {
+        if (leftExpression is BinaryExpression)
+            throw Exception("El lado izquierdo de la asignación no es asignable")
+
+        checkLeftSideAssignable()
+
+        rightExpression.check(
+            leftExpression.check(null)
+        )
+    }
+
+    private fun checkLeftSideAssignable() {
+        val operand = (leftExpression as BasicExpression).operand
+
+        if (operand is Primitive)
+            throw Exception("El lado izquierdo de la asignación no es asignable")
+
+        var chained = (operand as Primary).chained
+
+        if (chained == null && operand !is VariableAccess)
+            throw Exception("El lado izquierdo de la asignación no es asignable")
+
+        while (chained?.chained != null) {
+            chained = chained.chained
+        }
+
+        if (chained != null && chained !is VariableAccess)
+            throw Exception("El lado izquierdo de la asignación no es asignable")
+    }
+
+}
+
+private fun checkIsCall(basicExpression: BasicExpression) {
+    val operand = basicExpression.operand
+
+    if (operand is Primitive)
+        throw Exception("Solo se admiten llamadas a métodos como sentencias únicas en este contexto.")
+
+    var chained = (operand as Primary).chained
+
+    if (chained == null && operand !is Call)
+        throw Exception("Solo se admiten llamadas a métodos como sentencias únicas en este contexto")
+
+    while (chained?.chained != null) {
+        chained = chained.chained
+    }
+
+    if (chained != null && chained !is Call)
+        throw Exception("Solo se admiten llamadas a métodos como sentencias únicas en este contexto")
 
 }

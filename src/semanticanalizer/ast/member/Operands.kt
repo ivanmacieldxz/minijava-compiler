@@ -11,7 +11,7 @@ import kotlin.collections.contains
 import kotlin.collections.first
 
 interface Operand: ASTMember {
-    fun check(type: String?): String
+    fun check(expectedType: String?): String?
 }
 
 interface TokenizedOperand: Operand {
@@ -20,6 +20,10 @@ interface TokenizedOperand: Operand {
 
 interface Call {
     var arguments: MutableList<Expression>
+}
+
+interface Chained: Primary {
+    fun checkChained(receiverType: String?): String
 }
 
 class Primitive(
@@ -31,25 +35,32 @@ class Primitive(
     }
 
     override fun printItselfAndChildren(nestingLevel: Int) {
-
+        TODO()
     }
 
     override fun printSubAST(nestingLevel: Int) {
         println("\t".repeat(nestingLevel) + "Primitivo ($token)")
     }
 
-    override fun check(type: String?): String =
-        when (token.type) {
-            TokenType.INTEGER_LITERAL-> "int"
+    override fun check(expectedType: String?): String? {
+        val type = when (token.type) {
+            TokenType.INTEGER_LITERAL -> "int"
             TokenType.CHAR_LITERAL -> "char"
             TokenType.TRUE -> "boolean"
             TokenType.FALSE -> "boolean"
+            TokenType.NULL -> null
             else -> throw Exception("No se debería llegar hasta acá")
         }
+
+        if (expectedType != null && expectedType != type)
+            throw Exception("El tipo del operando no coincide con el tipo esperado")
+
+        return type
+    }
 }
 
 interface Primary : Operand {
-    var chained: Primary?
+    var chained: Chained?
     var parent: ASTMember
 
     override fun printItselfAndChildren(nestingLevel: Int) {
@@ -58,8 +69,8 @@ interface Primary : Operand {
 }
 
 class ParenthesizedExpression(override var parent: ASTMember): Primary {
-    var expression: Expression? = null
-    override var chained: Primary? = null
+    lateinit var expression: Expression
+    override var chained: Chained? = null
 
     override fun toString(): String {
         return "($expression${chained?.let { ").$it" } ?: ")"}"
@@ -67,19 +78,22 @@ class ParenthesizedExpression(override var parent: ASTMember): Primary {
 
     override fun printSubAST(nestingLevel: Int) {
         println("\t".repeat(nestingLevel) + "Expresion parentizada:")
-        expression?.printSubAST(nestingLevel + 1)
+        expression.printSubAST(nestingLevel + 1)
         chained?.let {
             println("\t".repeat(nestingLevel + 1) + "Encadenado:")
             it.printSubAST(nestingLevel + 1)
         }
     }
 
-    override fun check(type: String?): String {
-        val type = expression!!.check(type)
+    override fun check(expectedType: String?): String? {
+        val type = expression.check(null)
 
-        val definitiveType = chained?.check(type) ?: type
+        val definitiveType = chained?.checkChained(type) ?: type
 
-        return definitiveType!!
+        if (expectedType != null && definitiveType != expectedType)
+            throw Exception("El tipo del operando no coincide con el esperado")
+
+        return definitiveType
     }
 }
 
@@ -88,7 +102,7 @@ class LiteralPrimary(
     override var parent: ASTMember,
     var containerClass: Class
 ): Primary, TokenizedOperand {
-    override var chained: Primary? = null
+    override var chained: Chained? = null
 
     override fun toString():String {
         return "$token${chained?.let { ".$it" } ?: ""}"
@@ -102,14 +116,17 @@ class LiteralPrimary(
         }
     }
 
-    override fun check(type: String?): String {
+    override fun check(expectedType: String?): String {
         val type = when (token.type) {
             TokenType.STRING_LITERAL -> "String"
             TokenType.THIS -> containerClass.token.lexeme
             else -> throw Exception("No se debería llegar acá, algo salió mal")
         }
 
-        val definitiveType = chained?.check(type) ?: type
+        val definitiveType = chained?.checkChained(type) ?: type
+
+        if (expectedType != null && definitiveType != expectedType)
+            throw Exception("El tipo del operando no coincide con el tipo esperado")
 
         return definitiveType
     }
@@ -120,9 +137,9 @@ class VariableAccess(
     override var parent: ASTMember,
     var containerClass: Class,
     var containerCallable: Callable,
-    var containerBlock: Block?
-): Primary, TokenizedOperand {
-    override var chained: Primary? = null
+    var containerBlock: Block
+): Primary, TokenizedOperand, Chained {
+    override var chained: Chained? = null
 
     override fun toString(): String {
         return "$token${chained?.let { ".$it" } ?: ""}"
@@ -136,43 +153,52 @@ class VariableAccess(
         }
     }
 
-    override fun check(type: String?): String {
-        val type: String = if (type == null) {
-            if (token.lexeme !in containerBlock!!.visibleVariablesMap
-                && token.lexeme !in containerCallable.paramMap
-                && token.lexeme !in containerClass.attributeMap)
-                throw Exception("No se puede resolver el símbolo $token")
-
-            when (token.lexeme) {
-                in containerBlock!!.visibleVariablesMap -> {
-                    containerBlock!!.visibleVariablesMap[token.lexeme]!!.type
-                }
-                in containerCallable.paramMap -> {
-                    containerCallable.paramMap[token.lexeme]!!.typeToken.lexeme
-                }
-                in containerClass.attributeMap -> {
-                    containerClass.attributeMap[token.lexeme]!!.first().typeToken.lexeme
-                }
-                else -> throw Exception("Literalmente imposible que se llegue acá")
+    override fun check(expectedType: String?): String {
+        var type = when (token.lexeme) {
+            in containerBlock.visibleVariablesMap -> {
+                containerBlock.visibleVariablesMap[token.lexeme]!!.type
             }
-        } else {
-            //es acceso como encadenado
-            if (token.lexeme !in symbolTable.classMap[type]!!.attributeMap)
-                throw Exception("La clase $type no tiene un atributo $token")
-
-            symbolTable.classMap[type]!!.attributeMap[token.lexeme]!!.first().typeToken.lexeme
+            in containerCallable.paramMap -> {
+                containerCallable.paramMap[token.lexeme]!!.typeToken.lexeme
+            }
+            in containerClass.attributeMap -> {
+                containerClass.attributeMap[token.lexeme]!!.first().typeToken.lexeme
+            }
+            else -> throw Exception("No se puede resolver el símbolo $token")
         }
 
-        return chained?.check(type) ?: type
+        if (chained == null) {
+            if (expectedType != null && type != expectedType)
+                throw Exception("El tipo del operando no coincide con el tipo esperado")
+        } else
+            type = chained!!.checkChained(type)
+
+        return type
+    }
+
+    override fun checkChained(receiverType: String?): String {
+        if (receiverType == "void")
+            throw Exception("Nada que encadenar a un tipo void")
+
+        if (receiverType in primitiveTypesSet && receiverType != "String")
+            throw Exception("Nada que encadenar en un tipo primitivo")
+
+        if (token.lexeme !in symbolTable.classMap[receiverType]!!.attributeMap)
+            throw Exception("La clase $receiverType no tiene un atributo $token")
+
+        val type = symbolTable.classMap[receiverType]!!.attributeMap[token.lexeme]!!.first().typeToken.lexeme
+
+        return chained?.checkChained(type) ?: type
     }
 }
 
 class MethodCall(
     override var token: Token,
     override var parent: ASTMember,
-    var containerClass: Class
-): Primary, TokenizedOperand, Call {
-    override var chained: Primary? = null
+    var containerClass: Class,
+    var containerCallable: Callable
+): TokenizedOperand, Call, Chained {
+    override var chained: Chained? = null
     override lateinit var arguments: MutableList<Expression>
 
     override fun toString(): String {
@@ -191,33 +217,81 @@ class MethodCall(
         }
     }
 
-    override fun check(type: String?): String {
-        val type: String = if (type == null) {
-            if (token.lexeme !in containerClass.methodMap)
-                throw Exception("No se puede resolver el símbolo $token")
+    override fun check(expectedType: String?): String {
+        if (token.lexeme !in containerClass.methodMap)
+            throw Exception("No se puede resolver el símbolo $token")
 
-            containerClass.methodMap[token.lexeme]!!.typeToken.lexeme.takeIf {
-                containerClass.methodMap[token.lexeme]!!.modifier.lexeme != "static"
-            } ?: throw Exception("Los métodos static no pueden ser accedidos sin llamar a su clase.")
+        val methodCalled = containerClass.methodMap[token.lexeme]!!
 
-        } else {
-            //es acceso como encadenado
-            if (token.lexeme !in symbolTable.classMap[type]!!.methodMap)
-                throw Exception("La clase $type no tiene un atributo $token")
+        //TODO: chequeo de llamada no estática dentro de contexto estático
+        if ((containerCallable is Method) && methodCalled.modifier.lexeme != "static"
+            && (containerCallable as Method).modifier.lexeme == "static")
+            throw Exception("No se pueden referenciar métodos de instancia desde un contexto estático.")
 
-            containerClass.methodMap[token.lexeme]!!.typeToken.lexeme.takeIf {
-                containerClass.methodMap[token.lexeme]!!.modifier.lexeme != "static"
-            } ?: throw Exception("Los métodos static no pueden ser encadenados.")
-        }
+        if (methodCalled.modifier.lexeme == "static")
+            throw Exception("No se puede resolver el método al que se quiere acceder.")
+
+        var type: String = methodCalled.typeToken.lexeme
+
+        val formalArguments = methodCalled.paramMap
+
+        if (formalArguments.size > arguments.size)
+            //TODO: tirá como token el primer param de más
+            throw Exception("Se esperaban ${formalArguments.size}, pero se recibieron ${arguments.size}")
+        else if (formalArguments.size < arguments.size)
+            //TODO: tirá como token el último param recibido
+            throw Exception("Se esperaban ${formalArguments.size}, pero se recibieron ${arguments.size}")
 
         arguments.forEachIndexed { index, it ->
             val argType = it.check(null)
 
-            if (argType != (parent as Callable).paramMap.toList().get(index).second.typeToken.lexeme)
+            if (argType != formalArguments.values.toList().get(index).typeToken.lexeme)
                 throw Exception("El tipo del parámetro actual no coincide con el tipo del parámetro formal.")
         }
 
-        return chained?.check(type) ?: type
+        if (chained == null) {
+            if (expectedType != null && type != expectedType)
+                throw Exception("El tipo del operando no coincide con el tipo esperado")
+        } else
+            type = chained!!.checkChained(type)
+
+        return type
+    }
+
+    override fun checkChained(receiverType: String?): String {
+        if (receiverType == "void")
+            throw Exception("Nada que encadenar a un tipo void")
+
+        if (receiverType in primitiveTypesSet && receiverType != "String")
+            throw Exception("Nada que encadenar en un tipo primitivo")
+
+        if (token.lexeme !in symbolTable.classMap[receiverType]!!.methodMap)
+            throw Exception("No existe un método de nombre $token visible en $containerClass")
+
+        val methodCalled = symbolTable.classMap[receiverType]!!.methodMap[token.lexeme]!!
+
+        if (methodCalled.modifier.lexeme == "static")
+            throw Exception("No se puede acceder a un miembro estático a través de una instancia")
+
+        val type = methodCalled.typeToken.lexeme
+
+        val formalArguments = methodCalled.paramMap
+
+        if (formalArguments.size > arguments.size)
+        //TODO: tirá como token el primer param de más
+            throw Exception("Se esperaban ${formalArguments.size}, pero se recibieron ${arguments.size}")
+        else if (formalArguments.size < arguments.size)
+        //TODO: tirá como token el último param recibido
+            throw Exception("Se esperaban ${formalArguments.size}, pero se recibieron ${arguments.size}")
+
+        arguments.forEachIndexed { index, it ->
+            val argType = it.check(null)
+
+            if (argType != formalArguments.values.toList().get(index).typeToken.lexeme)
+                throw Exception("El tipo del parámetro actual no coincide con el tipo del parámetro formal.")
+        }
+
+        return chained?.checkChained(type)?: type
     }
 }
 
@@ -226,7 +300,7 @@ class ConstructorCall(
     override var parent: ASTMember
 ): Primary, TokenizedOperand, Call {
     override lateinit var arguments: MutableList<Expression>
-    override var chained: Primary? = null
+    override var chained: Chained? = null
 
     override fun toString(): String {
         return "new $token(${arguments})${chained?.let { ".$it" } ?: ""}"
@@ -244,38 +318,53 @@ class ConstructorCall(
         }
     }
 
-    override fun check(type: String?): String {
-        val type = token.lexeme
+    override fun check(expectedType: String?): String {
+        var type = token.lexeme
 
         if (token.lexeme !in symbolTable.classMap)
             throw Exception("La clase cuyo constructor se quiere invocar no existe")
 
+        val formalArguments = symbolTable.classMap[type]!!.constructor.paramMap
+
+        if (formalArguments.size > arguments.size)
+        //TODO: tirá como token el primer param de más
+            throw Exception("Se esperaban ${formalArguments.size}, pero se recibieron ${arguments.size}")
+        else if (formalArguments.size < arguments.size)
+        //TODO: tirá como token el último param recibido
+            throw Exception("Se esperaban ${formalArguments.size}, pero se recibieron ${arguments.size}")
+
         arguments.forEachIndexed { index, it ->
             val argType = it.check(null)
 
-            if (argType != (parent as Callable).paramMap.toList().get(index).second.typeToken.lexeme)
+            if (argType != formalArguments.values.toList().get(index).typeToken.lexeme)
                 throw Exception("El tipo del parámetro actual no coincide con el tipo del parámetro formal.")
         }
 
-        return chained?.check(type) ?: type
+        if (chained == null) {
+            if (expectedType != null && type != expectedType)
+                throw Exception("El tipo del operando no coincide con el tipo esperado")
+        } else
+            type = chained!!.checkChained(type)
+
+        return type
     }
 }
 
 class StaticMethodCall(
     override var parent: ASTMember,
-    var calledClass: Token,
-    var calledMethod: Token
+    var calledClassToken: Token,
+    var calledMethodToken: Token
 ): Primary, Call {
 
     override lateinit var arguments: MutableList<Expression>
-    override var chained: Primary? = null
+    override var chained: Chained? = null
 
     override fun toString():String {
-        return "$calledClass.$calledMethod(${arguments})${chained?.let { ".$it" } ?: ""}"
+        return "$calledClassToken.$calledMethodToken(${arguments})${chained?.let { ".$it" } ?: ""}"
     }
 
     override fun printSubAST(nestingLevel: Int) {
-        println("\t".repeat(nestingLevel) + "Llamada a método estático ($calledClass.$calledMethod):")
+        println("\t".repeat(nestingLevel) + "Llamada a método estático ($calledClassToken.$calledMethodToken):")
         println("\t".repeat(nestingLevel + 1) + "Argumentos:")
         arguments.forEach {
             it.printSubAST(nestingLevel + 1)
@@ -286,25 +375,42 @@ class StaticMethodCall(
         }
     }
 
-    override fun check(type: String?): String {
-        if (calledClass.lexeme !in symbolTable.classMap)
+    override fun check(expectedType: String?): String {
+        if (calledClassToken.lexeme !in symbolTable.classMap)
             throw Exception("La clase cuyo método se está referenciando no fue declarada.")
 
-        val calledClass = symbolTable.classMap[calledClass.lexeme]!!
+        val calledClass = symbolTable.classMap[calledClassToken.lexeme]!!
 
-        if (calledMethod.lexeme !in calledClass.methodMap
-            || calledClass.methodMap[calledMethod.lexeme]!!.modifier.lexeme != "static")
+        if (calledMethodToken.lexeme !in calledClass.methodMap
+            || calledClass.methodMap[calledMethodToken.lexeme]!!.modifier.lexeme != "static")
             throw Exception("No existe un método estático con ese nombre en la clase que se está referenciando.")
 
-        val type = calledClass.methodMap[calledMethod.lexeme]!!.typeToken.lexeme
+        val calledMethod = calledClass.methodMap[calledMethodToken.lexeme]!!
+
+        var type = calledMethod.typeToken.lexeme
+
+        val formalArguments = calledMethod.paramMap
+
+        if (formalArguments.size > arguments.size)
+            //TODO: tirá como token el primer param de más
+            throw Exception("Se esperaban ${formalArguments.size}, pero se recibieron ${arguments.size}")
+        else if (formalArguments.size < arguments.size)
+            //TODO: tirá como token el último param recibido
+            throw Exception("Se esperaban ${formalArguments.size}, pero se recibieron ${arguments.size}")
 
         arguments.forEachIndexed { index, it ->
             val argType = it.check(null)
 
-            if (argType != (parent as Callable).paramMap.toList().get(index).second.typeToken.lexeme)
+            if (argType != formalArguments.values.toList().get(index).typeToken.lexeme)
                 throw Exception("El tipo del parámetro actual no coincide con el tipo del parámetro formal.")
         }
 
-        return chained?.check(type) ?: type
+        if (chained == null) {
+            if (expectedType != null && type != expectedType)
+                throw Exception("El tipo del operando no coincide con el tipo esperado")
+        } else
+            type = chained!!.checkChained(type)
+
+        return chained?.checkChained(type) ?: type
     }
 }

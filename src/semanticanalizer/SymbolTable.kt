@@ -69,4 +69,16 @@ class SymbolTable {
         }
     }
 
+    fun checkSentences() {
+        classMap.values.forEach { cls ->
+            cls.constructor.block?.check()
+
+            cls.methodMap.values.forEach {
+                if (cls.owns(it)) {
+                    it.block?.check()
+                }
+            }
+        }
+    }
+
 }

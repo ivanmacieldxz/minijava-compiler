@@ -293,9 +293,10 @@ class SyntacticAnalyzerItrImpl(
                             expectedElementsStack.addFirst(TokenType.VAR)
 
                             astBuilder.currentContext = LocalVar(
-                                parentMember = symbolTable.currentContext as Callable,
-                                token = currentToken,
-                                parentSentence = astBuilder.currentContext as Sentence
+                                symbolTable.currentContext as Callable,
+                                currentToken,
+                                astBuilder.currentContext as Sentence,
+                                astBuilder.currentBlock!!
                             ).also {
                                 when (val parent = it.parentSentence) {
                                     is Block -> {
@@ -389,25 +390,26 @@ class SyntacticAnalyzerItrImpl(
                             }
 
                             astBuilder.currentContext = Assignment(
-                                astBuilder.currentContext!!,
-                                leftExpression as Expression,
-                                currentToken
+                                currentToken,
+                                symbolTable.currentContext as Callable,
+                                astBuilder.currentContext as Sentence,
+                                leftExpression as Expression
                             ).also {
                                 it.leftExpression.parentNode = it
-                                when (val parent = it.parentNode) {
+                                when (val parent = it.parentSentence) {
                                     is Block ->  {
                                         parent.childrenList.removeLast()
                                         parent.childrenList.addLast(it)
                                     }
                                     is If -> {
                                         if (parent.condition === it.leftExpression)
-                                            parent.condition = it
+                                            throw Exception("No se admiten asignaciones como condiciones")
                                         else
                                             parent.body = it
                                     }
                                     is While -> {
                                         if (parent.condition === it.leftExpression)
-                                            parent.condition = it
+                                            throw Exception("No se admiten asignaciones como condiciones")
                                         else
                                             parent.body = it
                                     }
@@ -415,7 +417,7 @@ class SyntacticAnalyzerItrImpl(
                                         parent.body = it
                                     }
                                     is Return -> {
-                                        parent.body = it
+                                        throw Exception("No se admiten asignaciones en este contexto")
                                     }
                                     is Call -> {
                                         throw Exception("Assignments not allowed as actual arguments")
@@ -453,6 +455,7 @@ class SyntacticAnalyzerItrImpl(
 
                         NonTerminal.BINARY_OPERATOR -> {
                             val basicExpression = (astBuilder.currentContext as BasicExpression)
+
                             astBuilder.currentContext = BinaryExpression(
                                 basicExpression.parentNode,
                                 basicExpression,
@@ -644,7 +647,8 @@ class SyntacticAnalyzerItrImpl(
                                     operand = MethodCall(
                                         astBuilder.metVarName,
                                         this,
-                                        symbolTable.currentClass
+                                        symbolTable.currentClass,
+                                        symbolTable.currentContext as Callable
                                     )
                                     astBuilder.currentContext = operand
                                 }
@@ -653,18 +657,12 @@ class SyntacticAnalyzerItrImpl(
                             } else {
                                 //era un acceso a variable
                                 (astBuilder.currentContext as BasicExpression).apply {
-                                    if (parentNode is If && (parentNode as If).body == this
-                                        || parentNode is Else
-                                        || parentNode is While && (parentNode as While).body == this)
-                                        throw Exception("Solo se aceptan llamadas a métodos como " +
-                                                "sentencias únicas en If, Else o While")
-
                                     operand = VariableAccess(
                                         astBuilder.metVarName,
                                         this,
                                         symbolTable.currentClass,
                                         symbolTable.currentContext as Callable,
-                                        astBuilder.currentBlock
+                                        astBuilder.currentBlock!!
                                     )
                                     astBuilder.currentContext = operand
                                 }
@@ -754,7 +752,8 @@ class SyntacticAnalyzerItrImpl(
                                     chained = MethodCall(
                                         astBuilder.metVarName,
                                         this,
-                                        symbolTable.currentClass
+                                        symbolTable.currentClass,
+                                        symbolTable.currentContext as Callable
                                     )
                                     astBuilder.currentContext = chained
                                 }
@@ -768,7 +767,7 @@ class SyntacticAnalyzerItrImpl(
                                         this,
                                         symbolTable.currentClass,
                                         symbolTable.currentContext as Callable,
-                                        astBuilder.currentBlock
+                                        astBuilder.currentBlock!!
                                     )
                                     astBuilder.currentContext = chained
                                 }

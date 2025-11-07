@@ -1,3 +1,4 @@
+
 class X {
 
     public X() {
@@ -12,11 +13,13 @@ class X {
 
         ((x).a);
 
+        1+1;
+
         x.chainedXD(x);
         (((((((1)))))));
         x(x + y.y() + ( ( ( ( ( x ).a ).b ).c ).d.a.c).e).chainedXD;
 
-        var x = 3;
+//        var x = 3;
 
         2+2 = 3+3;
 
