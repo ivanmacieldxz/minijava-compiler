@@ -21,6 +21,9 @@ import semanticanalizer.stmember.RepeatedDeclarationException
 import semanticanalizer.SymbolTable.Predefined
 import semanticanalizer.ast.ASTBuilder
 import semanticanalizer.ast.member.Assignment
+import semanticanalizer.ast.member.AssignmentAsActualArgumentException
+import semanticanalizer.ast.member.AssignmentAsConditionException
+import semanticanalizer.ast.member.AssignmentAsReturnExpressionException
 import semanticanalizer.ast.member.BasicExpression
 import semanticanalizer.ast.member.BinaryExpression
 import semanticanalizer.ast.member.Block
@@ -39,6 +42,7 @@ import semanticanalizer.ast.member.Primitive
 import semanticanalizer.ast.member.Return
 import semanticanalizer.ast.member.Sentence
 import semanticanalizer.ast.member.StaticMethodCall
+import semanticanalizer.ast.member.VarDeclarationAsOnlySentenceException
 import semanticanalizer.ast.member.VariableAccess
 import semanticanalizer.ast.member.While
 import symbolTable
@@ -303,7 +307,7 @@ class SyntacticAnalyzerItrImpl(
                                         parent.childrenList.add(it)
                                     }
                                     is CompoundSentence -> {
-                                        throw Exception("No se admiten declaraciones de variables como única sentencia dentro de un if, else o while")
+                                        throw VarDeclarationAsOnlySentenceException(it.token, parent.token)
                                     }
                                 }
                             }
@@ -403,13 +407,13 @@ class SyntacticAnalyzerItrImpl(
                                     }
                                     is If -> {
                                         if (parent.condition === it.leftExpression)
-                                            throw Exception("No se admiten asignaciones como condiciones")
+                                            throw AssignmentAsConditionException(it.token, parent.token)
                                         else
                                             parent.body = it
                                     }
                                     is While -> {
                                         if (parent.condition === it.leftExpression)
-                                            throw Exception("No se admiten asignaciones como condiciones")
+                                            throw AssignmentAsConditionException(it.token, parent.token)
                                         else
                                             parent.body = it
                                     }
@@ -417,10 +421,10 @@ class SyntacticAnalyzerItrImpl(
                                         parent.body = it
                                     }
                                     is Return -> {
-                                        throw Exception("No se admiten asignaciones en este contexto")
+                                        throw AssignmentAsReturnExpressionException(it.token, parent.token)
                                     }
                                     is Call -> {
-                                        throw Exception("Assignments not allowed as actual arguments")
+                                        throw AssignmentAsActualArgumentException(it.token)
                                     }
                                 }
                             }
@@ -926,6 +930,8 @@ class SyntacticAnalyzerItrImpl(
                                                     currentBlockParent.body = it
                                                 }
                                             }
+
+                                            astBuilder.currentBlock = it
                                         }
                                     }
                                 }
@@ -1019,6 +1025,8 @@ class SyntacticAnalyzerItrImpl(
                                     astContext = (astBuilder.currentContext as CompoundSentence).parentSentence
                                     astBuilder.currentContext = astContext
                                 }
+
+                                astBuilder.currentBlock = (astBuilder.currentBlock?.parentSentence as? Block)
                             }
                         }
 
