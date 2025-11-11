@@ -20,6 +20,7 @@ import semanticanalizer.stmember.Object
 import semanticanalizer.stmember.RepeatedDeclarationException
 import semanticanalizer.SymbolTable.Predefined
 import semanticanalizer.ast.ASTBuilder
+import semanticanalizer.ast.ASTMember
 import semanticanalizer.ast.member.Assignment
 import semanticanalizer.ast.member.AssignmentAsActualArgumentException
 import semanticanalizer.ast.member.AssignmentAsConditionException
@@ -31,6 +32,7 @@ import semanticanalizer.ast.member.Call
 import semanticanalizer.ast.member.CompoundSentence
 import semanticanalizer.ast.member.ConstructorCall
 import semanticanalizer.ast.member.Else
+import semanticanalizer.ast.member.EmptySentence
 import semanticanalizer.ast.member.Expression
 import semanticanalizer.ast.member.If
 import semanticanalizer.ast.member.LiteralPrimary
@@ -300,7 +302,7 @@ class SyntacticAnalyzerItrImpl(
                                 symbolTable.currentContext as Callable,
                                 currentToken,
                                 astBuilder.currentContext as Sentence,
-                                astBuilder.currentBlock!!
+                                astBuilder.blockStack.first()
                             ).also {
                                 when (val parent = it.parentSentence) {
                                     is Block -> {
@@ -390,7 +392,8 @@ class SyntacticAnalyzerItrImpl(
                                 is Return -> {
                                     parent.body
                                 }
-                                else -> {}
+                                else -> {
+                                }
                             }
 
                             astBuilder.currentContext = Assignment(
@@ -618,6 +621,7 @@ class SyntacticAnalyzerItrImpl(
 
                                 (astBuilder.currentContext as BasicExpression).apply {
                                     operand = ParenthesizedExpression(
+                                        currentToken,
                                         this
                                     )
                                     astBuilder.currentContext = operand
@@ -666,7 +670,7 @@ class SyntacticAnalyzerItrImpl(
                                         this,
                                         symbolTable.currentClass,
                                         symbolTable.currentContext as Callable,
-                                        astBuilder.currentBlock!!
+                                        astBuilder.blockStack.first()!!
                                     )
                                     astBuilder.currentContext = operand
                                 }
@@ -771,7 +775,7 @@ class SyntacticAnalyzerItrImpl(
                                         this,
                                         symbolTable.currentClass,
                                         symbolTable.currentContext as Callable,
-                                        astBuilder.currentBlock!!
+                                        astBuilder.blockStack.first()!!
                                     )
                                     astBuilder.currentContext = chained
                                 }
@@ -858,6 +862,8 @@ class SyntacticAnalyzerItrImpl(
                                             )
                                         }
 
+                                        currentContext.declarationCompleted = true
+
                                         symbolTable.accumulator.modifier = Token.DummyToken
                                         symbolTable.accumulator.foundInheritance = false
                                     }
@@ -882,9 +888,9 @@ class SyntacticAnalyzerItrImpl(
                                             currentContext.block = currentContext.block ?: it
 
                                             it.visibleVariablesMap +=
-                                                astBuilder.currentBlock?.visibleVariablesMap ?: emptyMap()
+                                                astBuilder.blockStack.firstOrNull()?.visibleVariablesMap ?: emptyMap()
 
-                                            astBuilder.currentBlock = it
+                                            astBuilder.blockStack.addFirst(it)
                                         }
                                     }
                                     is Method -> {
@@ -905,10 +911,7 @@ class SyntacticAnalyzerItrImpl(
                                         ).also {
                                             currentContext.block = currentContext.block ?: it
 
-                                            it.visibleVariablesMap +=
-                                                astBuilder.currentBlock?.visibleVariablesMap ?: emptyMap()
-
-                                            astBuilder.currentBlock = it
+                                            astBuilder.blockStack.addFirst(it)
                                         }
                                     }
                                 }
@@ -931,7 +934,10 @@ class SyntacticAnalyzerItrImpl(
                                                 }
                                             }
 
-                                            astBuilder.currentBlock = it
+                                            it.visibleVariablesMap +=
+                                                astBuilder.blockStack.firstOrNull()?.visibleVariablesMap ?: emptyMap()
+
+                                            astBuilder.blockStack.addFirst(it)
                                         }
                                     }
                                 }
@@ -999,7 +1005,10 @@ class SyntacticAnalyzerItrImpl(
                                         symbolTable.currentContext = DummyContext
                                         symbolTable.accumulator.clear()
                                     }
-
+                                    is Callable -> {
+                                        symbolTable.currentContext = symbolTable.currentClass
+                                        astBuilder.blockStack.removeFirst()
+                                    }
                                     else -> {
                                         symbolTable.currentContext = symbolTable.currentClass
                                     }
@@ -1026,7 +1035,7 @@ class SyntacticAnalyzerItrImpl(
                                     astBuilder.currentContext = astContext
                                 }
 
-                                astBuilder.currentBlock = (astBuilder.currentBlock?.parentSentence as? Block)
+                                astBuilder.blockStack.removeFirst()
                             }
                         }
 
@@ -1301,7 +1310,7 @@ class SyntacticAnalyzerItrImpl(
         when (val astContext = astBuilder.currentContext) {
             is LocalVar -> {
                 astContext.varName = token
-                astBuilder.currentBlock!!.insertVarDeclaration(astContext)
+                astBuilder.blockStack.first().insertVarDeclaration(astContext)
             }
             is Primary -> {
                 astBuilder.metVarName = token
