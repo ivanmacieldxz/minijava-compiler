@@ -42,25 +42,22 @@ class BinaryExpression(
     }
 
     override fun check(type: String?): String {
-        val leftType = leftExpression.check(type)
-
-        if (leftType !in primitiveTypesSet)
-            throw Exception("No se pueden realizar operaciones binarias con tipos no primitivos")
+        val leftType = leftExpression.check(null)
 
         when (leftType) {
             "int" -> {
                 if (operator.lexeme !in intOperators)
-                    throw Exception("El operador de la expresión no es compatible con el operando de la izquierda")
+                    throw NonApplicableBinaryOperatorException(operator)
             }
             "boolean" -> {
                 if (operator.lexeme !in booleanOperators)
-                    throw Exception("El operador de la expresión no es compatible con el operando de la izquierda")
+                    throw NonApplicableBinaryOperatorException(operator)
             }
             "char", "String" -> {
                 if (operator.lexeme !in logicOperators)
-                    throw Exception("El operador de la expresión no es compatible con el operando de la izquierda")
+                    throw NonApplicableBinaryOperatorException(operator)
             }
-            null -> throw Exception("El operador no es aplicable a null")
+            null -> throw NonApplicableBinaryOperatorException(operator)
         }
 
         rightExpression.check(leftType)
@@ -100,6 +97,7 @@ class BasicExpression(
 
     override fun printSubAST(nestingLevel: Int) {
         println("\t".repeat(nestingLevel) + "Exp básica:")
+
         operator?.let { println("\t".repeat(nestingLevel) + "Operador unario: $operator") }
         operand.printSubAST(nestingLevel + 1)
     }
@@ -108,25 +106,43 @@ class BasicExpression(
         val operandType = operand.check(type)
 
         return operator?.let {
-            resultingType(operandType, it.lexeme)
+            resultingType(operandType, it)
         } ?: operandType
     }
 
-    private fun resultingType(operandType: String?, operator: String) =
+    private fun resultingType(operandType: String?, operator: Token) =
         when (operandType) {
             "int" -> {
-                if (operator == "!")
-                    throw Exception("Operador inválido para el operando")
+                if (operator.lexeme == "!")
+                    throw InvalidUnaryOperatorException(operator, operandType)
                 else
                     operandType
             }
             "boolean" -> {
-                if (operator != "!")
-                    throw Exception("Operador inválido para el operando")
+                if (operator.lexeme != "!")
+                    throw InvalidUnaryOperatorException(operator, operandType)
                 else
                     operandType
             }
-            else -> throw Exception("Operador inválido para el operando")
+            else -> throw InvalidUnaryOperatorException(operator, operandType.toString())
         }
+
+}
+
+class EmptyExpression(
+    override var parentNode: ASTMember
+): Expression {
+
+    override fun check(type: String?): String? {
+        return null
+    }
+
+    override fun printItselfAndChildren(nestingLevel: Int) {
+        println("\t".repeat(nestingLevel) + "Empty Expression")
+    }
+
+    override fun printSubAST(nestingLevel: Int) {
+        println("\t".repeat(nestingLevel) + "Empty Expression")
+    }
 
 }

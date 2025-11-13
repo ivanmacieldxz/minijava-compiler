@@ -2,43 +2,43 @@
 class X {
 
     public X() {
-        if (true)
-            false;
-        false;
-        X.a();
+//        if (true)
+//            false;
+//        false;
+//        X.a();
     }
 
     final void x(int x, int y, int z) {
         new String();
 
-        ((x).a);
+//        ((x).a);
 
-        1+1;
+//        1+1;
 
-        x.chainedXD(x);
-        (((((((1)))))));
-        x(x + y.y() + ( ( ( ( ( x ).a ).b ).c ).d.a.c).e).chainedXD;
+//        x.chainedXD(x);
+//        (((((((1)))))));
+//        x(x + y.y() + ( ( ( ( ( x ).a ).b ).c ).d.a.c).e).chainedXD;
 
 //        var x = 3;
 
-        2+2 = 3+3;
+//        2+2 = 3+3;
 
-        if ((("true"))) {
-            var x = 2;
-        }
-        if (true - false = 3 + 1) {
-            2 = 3;
-            if (false + true) {
-                return 2 + 2 - 2 + 2 * 3 - 7;
-            } else {
-                return -'a';
-            }
-            if (++'a')
+//        if ((("true"))) {
+//
+//        }
+        if (true) {
+//            2 = 3;
+//            if (false + true) {
+//                return 2 + 2 - 2 + 2 * 3 - 7;
+//            } else {
+//                return -'a';
+//            }
+            if (false)
                 ;;;;
-            if (this) {
+            if (true) {
 
             } else {
-                if ("92231") {
+                if (false) {
 
                 } else {
 

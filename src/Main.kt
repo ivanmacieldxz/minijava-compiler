@@ -3,13 +3,11 @@ import lexer.LexicalAnalyzerImpl
 import lexer.LexicalException
 import parser.SyntacticAnalyzerItrImpl
 import parser.SyntacticException
-import semanticanalizer.stmember.SemanticException
+import semanticanalizer.SemanticException
 import semanticanalizer.SymbolTable
-import semanticanalizer.stmember.Declarable
 import semanticanalizer.stmember.Object
 import sourcemanager.SourceManager
 import sourcemanager.SourceManagerEfImpl
-import java.util.Stack
 
 lateinit var symbolTable: SymbolTable
 
@@ -47,7 +45,7 @@ fun main(args: Array<String>) {
 //            }
 //        }
 
-//        printAST()
+        printAST()
 
         symbolTable.checkSentences()
 
@@ -58,6 +56,7 @@ fun main(args: Array<String>) {
         print(e)
         wereErrors = true
     } catch (e: SemanticException) {
+        e.printStackTrace()
         print(e)
         wereErrors = true
     } finally {

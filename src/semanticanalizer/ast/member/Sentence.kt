@@ -5,6 +5,7 @@ import semanticanalizer.stmember.Callable
 import semanticanalizer.stmember.Constructor
 import semanticanalizer.stmember.Method
 import utils.Token
+import utils.TokenType
 
 interface Sentence: ASTMember {
 
@@ -13,6 +14,25 @@ interface Sentence: ASTMember {
     var parentSentence: Sentence?
 
     fun check()
+
+}
+
+class EmptySentence(
+    override var parentMember: Callable,
+    override var parentSentence: Sentence?
+): Sentence {
+
+    override var token: Token = Token.DummyToken
+
+    override fun check() {}
+
+    override fun printItselfAndChildren(nestingLevel: Int) {
+        println("\t".repeat(nestingLevel) + "Sentencia vacía.")
+    }
+
+    override fun printSubAST(nestingLevel: Int) {
+        println("\t".repeat(nestingLevel) + "Sentencia vacía.")
+    }
 
 }
 
@@ -26,8 +46,8 @@ class Block(
     var visibleVariablesMap = mutableMapOf<String, LocalVar>()
 
     fun insertVarDeclaration(localVar: LocalVar) {
-        if (localVar.varName.lexeme in visibleVariablesMap)
-            throw Exception("Una variable del mismo nombre fue declarada anteriormente")
+        if (localVar.varName.lexeme in visibleVariablesMap || localVar.varName.lexeme in parentMember.paramMap)
+            throw RepeatedVariableDeclarationException(localVar.varName)
         else {
             visibleVariablesMap[localVar.varName.lexeme] = localVar
         }
@@ -44,6 +64,7 @@ class Block(
     }
 
     override fun printSubAST(nestingLevel: Int) {
+        println("\t".repeat(nestingLevel) + "Bloque:")
         childrenList.forEach { children ->
             children.printSubAST(nestingLevel + 1)
         }
@@ -56,10 +77,12 @@ class Block(
                     it.check()
                 }
                 is BasicExpression -> {
-                    checkIsCall(it)
+                    checkIsValidAsSingleSentence(it)
                     it.check(null)
                 }
-                is BinaryExpression -> throw Exception()
+                is BinaryExpression -> throw Exception(
+                    "No se admiten expresiones binarias como sentencias sueltas"
+                )
             }
         }
     }
@@ -89,9 +112,9 @@ class If(
     }
 
     override fun printSubAST(nestingLevel: Int) {
-        println("\t".repeat(nestingLevel) + "If:")
+        println("\t".repeat(nestingLevel) + "If (id ${System.identityHashCode(this)}):")
         condition?.printSubAST(nestingLevel + 1)
-        body?.printSubAST(nestingLevel)
+        body?.printSubAST(nestingLevel + 1)
         elseSentence?.printSubAST(nestingLevel)
     }
 
@@ -108,7 +131,7 @@ class If(
             }
             is Expression -> {
                 if (body is BasicExpression)
-                    checkIsCall(body)
+                    checkIsValidAsSingleSentence(body)
 
                 body.check(null)
             }
@@ -132,8 +155,8 @@ class Else(
     }
 
     override fun printSubAST(nestingLevel: Int) {
-        println("\t".repeat(nestingLevel) + "Else:")
-        body?.printSubAST(nestingLevel)
+        println("\t".repeat(nestingLevel) + "Else (padre: ${parentSentence!!.javaClass} id ${System.identityHashCode(parentSentence)}):")
+        body?.printSubAST(nestingLevel + 1)
     }
 
     override fun check() {
@@ -145,7 +168,7 @@ class Else(
             }
             is Expression -> {
                 if (body is BasicExpression)
-                    checkIsCall(body)
+                    checkIsValidAsSingleSentence(body)
 
                 body.check(null)
             }
@@ -188,7 +211,7 @@ class While(
             }
             is Expression -> {
                 if (body is BasicExpression)
-                    checkIsCall(body)
+                    checkIsValidAsSingleSentence(body)
 
                 body.check(null)
             }
@@ -253,9 +276,6 @@ class LocalVar(
     }
 
     override fun check() {
-        if (varName.lexeme in parentMember.paramMap || varName.lexeme in containerBlock.visibleVariablesMap)
-            throw Exception("Un parámetro o variable del mismo nombre ya es visible en este contexto")
-
         type = expression.check(null)
             ?: throw Exception("Una variable local no puede ser inicializada con null")
 
@@ -318,22 +338,26 @@ class Assignment(
 
 }
 
-private fun checkIsCall(basicExpression: BasicExpression) {
+private fun checkIsValidAsSingleSentence(basicExpression: BasicExpression) {
     val operand = basicExpression.operand
+    val operator = basicExpression.operator?.type
 
     if (operand is Primitive)
-        throw Exception("Solo se admiten llamadas a métodos como sentencias únicas en este contexto.")
+        throw ExpressionInvalidAsSingleSentenceException(basicExpression.operator ?: operand.token)
 
     var chained = (operand as Primary).chained
 
-    if (chained == null && operand !is Call)
-        throw Exception("Solo se admiten llamadas a métodos como sentencias únicas en este contexto")
+    if (chained == null &&
+        (operand is ParenthesizedExpression ||
+                operand is VariableAccess && operator != TokenType.DECREMENT && operator != TokenType.INCREMENT))
+        throw ExpressionInvalidAsSingleSentenceException(basicExpression.operator ?: operand.token)
 
     while (chained?.chained != null) {
         chained = chained.chained
     }
 
-    if (chained != null && chained !is Call)
-        throw Exception("Solo se admiten llamadas a métodos como sentencias únicas en este contexto")
+    if (chained != null && chained !is Call
+        && chained is VariableAccess && operator != TokenType.DECREMENT && operator != TokenType.INCREMENT)
+        throw ExpressionInvalidAsSingleSentenceException(basicExpression.operator ?: operand.token)
 
 }

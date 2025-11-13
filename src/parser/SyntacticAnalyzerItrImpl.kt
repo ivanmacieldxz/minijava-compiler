@@ -393,6 +393,7 @@ class SyntacticAnalyzerItrImpl(
                                     parent.body
                                 }
                                 else -> {
+                                    throw Exception("${parent?.javaClass}")
                                 }
                             }
 
@@ -1016,11 +1017,11 @@ class SyntacticAnalyzerItrImpl(
                             } else {
                                 symbolTable.accumulator.expectedClosingBrackets--
 
-                                when (val prevASTContext = astBuilder.currentContext) {
-                                    is Sentence -> {
-                                        astBuilder.currentContext = prevASTContext.parentSentence
-                                    }
+                                astBuilder.ifWithoutElseStack.removeAll {
+                                    it in astBuilder.currentBlockIfs()
                                 }
+
+                                astBuilder.currentContext = (astBuilder.currentContext as Sentence).parentSentence
 
                                 when (val astContext = astBuilder.currentContext) {
                                     is CompoundSentence -> {
@@ -1053,7 +1054,10 @@ class SyntacticAnalyzerItrImpl(
 
                                 } else {
                                     when (val prevASTContext = astBuilder.currentContext) {
-                                        is CompoundSentence, is LocalVar, is Return -> {
+                                        is Else -> {
+                                            astBuilder.currentContext = prevASTContext.parentSentence!!.parentSentence
+                                        }
+                                        is CompoundSentence, is LocalVar, is Return, is Assignment -> {
                                             astBuilder.currentContext = prevASTContext.parentSentence
                                         }
                                     }
@@ -1082,6 +1086,8 @@ class SyntacticAnalyzerItrImpl(
                                         parent.body = it
                                     }
                                 }
+
+                                astBuilder.ifWithoutElseStack.addFirst(it)
                             }
                         }
 
@@ -1089,11 +1095,11 @@ class SyntacticAnalyzerItrImpl(
                             astBuilder.currentContext = Else(
                                 symbolTable.currentContext as Callable,
                                 prevToken,
-                                astBuilder.currentContext as Sentence
+                                astBuilder.ifWithoutElseStack.removeFirst()
                             ).also {
                                 when (val parent = it.parentSentence) {
                                     is Block -> {
-                                        parent.childrenList.add(it)
+                                        throw Exception("Ya no debería entrar acá")
                                     }
                                     is If -> {
                                         parent.elseSentence = it

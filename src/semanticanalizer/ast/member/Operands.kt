@@ -11,11 +11,9 @@ import kotlin.collections.contains
 import kotlin.collections.first
 
 interface Operand: ASTMember {
-    fun check(expectedType: String?): String?
-}
-
-interface TokenizedOperand: Operand {
     var token: Token
+
+    fun check(expectedType: String?): String?
 }
 
 interface Call {
@@ -26,16 +24,14 @@ interface Chained: Primary {
     fun checkChained(receiverType: String?): String
 }
 
-class Primitive(
-    override var token: Token
-): TokenizedOperand {
+class Primitive(override var token: Token): Operand {
 
     override fun toString():String {
         return token.lexeme
     }
 
     override fun printItselfAndChildren(nestingLevel: Int) {
-        TODO()
+
     }
 
     override fun printSubAST(nestingLevel: Int) {
@@ -68,7 +64,10 @@ interface Primary : Operand {
     }
 }
 
-class ParenthesizedExpression(override var parent: ASTMember): Primary {
+class ParenthesizedExpression(
+    override var token: Token,
+    override var parent: ASTMember
+): Primary {
     lateinit var expression: Expression
     override var chained: Chained? = null
 
@@ -101,7 +100,7 @@ class LiteralPrimary(
     override var token: Token,
     override var parent: ASTMember,
     var containerClass: Class
-): Primary, TokenizedOperand {
+): Primary {
     override var chained: Chained? = null
 
     override fun toString():String {
@@ -138,7 +137,7 @@ class VariableAccess(
     var containerClass: Class,
     var containerCallable: Callable,
     var containerBlock: Block
-): Primary, TokenizedOperand, Chained {
+): Primary, Chained {
     override var chained: Chained? = null
 
     override fun toString(): String {
@@ -197,7 +196,7 @@ class MethodCall(
     override var parent: ASTMember,
     var containerClass: Class,
     var containerCallable: Callable
-): TokenizedOperand, Call, Chained {
+): Call, Chained {
     override var chained: Chained? = null
     override lateinit var arguments: MutableList<Expression>
 
@@ -223,7 +222,6 @@ class MethodCall(
 
         val methodCalled = containerClass.methodMap[token.lexeme]!!
 
-        //TODO: chequeo de llamada no estática dentro de contexto estático
         if ((containerCallable is Method) && methodCalled.modifier.lexeme != "static"
             && (containerCallable as Method).modifier.lexeme == "static")
             throw Exception("No se pueden referenciar métodos de instancia desde un contexto estático.")
@@ -260,10 +258,10 @@ class MethodCall(
 
     override fun checkChained(receiverType: String?): String {
         if (receiverType == "void")
-            throw Exception("Nada que encadenar a un tipo void")
+            throw InvalidChainingException(token)
 
         if (receiverType in primitiveTypesSet && receiverType != "String")
-            throw Exception("Nada que encadenar en un tipo primitivo")
+            throw InvalidChainingException(token)
 
         if (token.lexeme !in symbolTable.classMap[receiverType]!!.methodMap)
             throw Exception("No existe un método de nombre $token visible en $containerClass")
@@ -298,7 +296,7 @@ class MethodCall(
 class ConstructorCall(
     override var token: Token,
     override var parent: ASTMember
-): Primary, TokenizedOperand, Call {
+): Primary, Call {
     override lateinit var arguments: MutableList<Expression>
     override var chained: Chained? = null
 
@@ -352,7 +350,7 @@ class ConstructorCall(
 
 class StaticMethodCall(
     override var parent: ASTMember,
-    var calledClassToken: Token,
+    override var token: Token,
     var calledMethodToken: Token
 ): Primary, Call {
 
@@ -360,11 +358,11 @@ class StaticMethodCall(
     override var chained: Chained? = null
 
     override fun toString():String {
-        return "$calledClassToken.$calledMethodToken(${arguments})${chained?.let { ".$it" } ?: ""}"
+        return "$token.$calledMethodToken(${arguments})${chained?.let { ".$it" } ?: ""}"
     }
 
     override fun printSubAST(nestingLevel: Int) {
-        println("\t".repeat(nestingLevel) + "Llamada a método estático ($calledClassToken.$calledMethodToken):")
+        println("\t".repeat(nestingLevel) + "Llamada a método estático ($token.$calledMethodToken):")
         println("\t".repeat(nestingLevel + 1) + "Argumentos:")
         arguments.forEach {
             it.printSubAST(nestingLevel + 1)
@@ -376,10 +374,10 @@ class StaticMethodCall(
     }
 
     override fun check(expectedType: String?): String {
-        if (calledClassToken.lexeme !in symbolTable.classMap)
+        if (token.lexeme !in symbolTable.classMap)
             throw Exception("La clase cuyo método se está referenciando no fue declarada.")
 
-        val calledClass = symbolTable.classMap[calledClassToken.lexeme]!!
+        val calledClass = symbolTable.classMap[token.lexeme]!!
 
         if (calledMethodToken.lexeme !in calledClass.methodMap
             || calledClass.methodMap[calledMethodToken.lexeme]!!.modifier.lexeme != "static")

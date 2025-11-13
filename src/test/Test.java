@@ -16,6 +16,7 @@ public class Test {
             y();
         }
         public X() {
+
             y();
             x();
         }
@@ -25,6 +26,13 @@ public class Test {
 
         public static void main(String[] args) {
             int x = 2; //puedo hacer shadow de atributos :)
+
+            var a = new X();
+            var b = new X();
+
+//            var args = 1;
+
+//            var c = a + b;
 
 //            if (1 + new Y()) {
 //
