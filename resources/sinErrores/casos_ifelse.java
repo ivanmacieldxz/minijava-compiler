@@ -2,10 +2,13 @@ class X {
     void x() {
 
         if (true) {
-            if (true)
-                if (true)
-                    if (true)
-                        ;;
+            if (1 < 2)
+                if (2 < 3)
+                    if (3 < 4)
+                        ;
+                    else
+                        if (4 < 5);
+
         }
         else;
 

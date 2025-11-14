@@ -3,6 +3,7 @@ package semanticanalizer.ast
 import semanticanalizer.ast.member.Block
 import semanticanalizer.ast.member.CompoundSentence
 import semanticanalizer.ast.member.If
+import semanticanalizer.ast.member.Else
 import symbolTable
 import utils.Token
 
@@ -27,6 +28,10 @@ class ASTBuilder {
 
             if (currentCompoundSentence.body is CompoundSentence)
                 compoundSentenceStack.addLast(currentCompoundSentence.body as CompoundSentence)
+
+            if (currentCompoundSentence.body is If && (currentCompoundSentence.body as If).elseSentence != null)
+                compoundSentenceStack.addLast((currentCompoundSentence.body as If).elseSentence!!)
+
 
             currentCompoundSentence = compoundSentenceStack.removeFirstOrNull()
         }
