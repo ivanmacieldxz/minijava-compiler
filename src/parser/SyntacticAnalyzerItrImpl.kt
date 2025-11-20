@@ -390,7 +390,7 @@ class SyntacticAnalyzerItrImpl(
                                     parent.body
                                 }
                                 else -> {
-                                    throw Exception("${parent?.javaClass}")
+
                                 }
                             }
 

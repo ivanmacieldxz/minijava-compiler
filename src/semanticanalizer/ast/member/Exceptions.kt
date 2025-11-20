@@ -36,8 +36,9 @@ class RepeatedVariableDeclarationException(
 ): SemanticException("El nombre $token ya es utilizado en el contexto actual.", token)
 
 class NonExistentClassException(
-    token: Token
-): SemanticException("", token)
+    token: Token,
+    message: String
+): SemanticException(message, token)
 
 class ExpressionInvalidAsSingleSentenceException(
     token: Token
@@ -58,3 +59,16 @@ class UnexpectedNullOperandException(
     expectedType: String
 ): SemanticException("Se esperaba un operando de tipo $expectedType, pero se encontró null.", token)
 
+class InvalidCallException(
+    token: Token,
+    message: String
+): SemanticException(message, token)
+
+class InvalidVarAccessException(
+    token: Token
+): SemanticException("No se puede resolver el símbolo $token.", token)
+
+class InvalidAttributeAccessException(
+    token: Token,
+    receiverClass: String
+): SemanticException("La clase $receiverClass no tiene un atributo $token", token)

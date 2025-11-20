@@ -164,7 +164,7 @@ class VariableAccess(
             in containerClass.attributeMap -> {
                 containerClass.attributeMap[token.lexeme]!!.first().typeToken.lexeme
             }
-            else -> throw Exception("No se puede resolver el símbolo $token")
+            else -> throw InvalidVarAccessException(token)
         }
 
         type = chained?.checkChained(type) ?: type
@@ -175,14 +175,11 @@ class VariableAccess(
     }
 
     override fun checkChained(receiverType: String?): String {
-        if (receiverType == "void")
-            throw Exception("Nada que encadenar a un tipo void")
-
-        if (receiverType in primitiveTypesSet && receiverType != "String")
-            throw Exception("Nada que encadenar en un tipo primitivo")
+        if (receiverType == "void" || receiverType in primitiveTypesSet && receiverType != "String")
+            throw InvalidChainingException(token)
 
         if (token.lexeme !in symbolTable.classMap[receiverType]!!.attributeMap)
-            throw Exception("La clase $receiverType no tiene un atributo $token")
+            throw InvalidAttributeAccessException(token, receiverType!!)
 
         val type = symbolTable.classMap[receiverType]!!.attributeMap[token.lexeme]!!.first().typeToken.lexeme
 
@@ -217,33 +214,41 @@ class MethodCall(
 
     override fun check(expectedType: String?): String {
         if (token.lexeme !in containerClass.methodMap)
-            throw Exception("No se puede resolver el símbolo $token")
+            throw InvalidCallException(
+                token,
+                "La clase ${containerClass.token} no tiene un método de nombre $token"
+            )
 
         val methodCalled = containerClass.methodMap[token.lexeme]!!
 
         if ((containerCallable is Method) && methodCalled.modifier.lexeme != "static"
             && (containerCallable as Method).modifier.lexeme == "static")
-            throw Exception("No se pueden referenciar métodos de instancia desde un contexto estático.")
+            throw InvalidCallException(
+                token,
+                "No se pueden referenciar métodos de instancia desde un contexto estático."
+            )
 
         if (methodCalled.modifier.lexeme == "static")
-            throw Exception("No se puede resolver el método al que se quiere acceder.")
+            throw InvalidCallException(token,"No se puede resolver el método al que se quiere acceder.")
 
         var type: String = methodCalled.typeToken.lexeme
 
         val formalArguments = methodCalled.paramMap
 
-        if (formalArguments.size > arguments.size)
-            //TODO: tirá como token el primer param de más
-            throw Exception("Se esperaban ${formalArguments.size}, pero se recibieron ${arguments.size}")
-        else if (formalArguments.size < arguments.size)
-            //TODO: tirá como token el último param recibido
-            throw Exception("Se esperaban ${formalArguments.size}, pero se recibieron ${arguments.size}")
+        if (formalArguments.size != arguments.size)
+            throw InvalidCallException(
+                token,
+                "Se esperaban ${formalArguments.size}, pero se recibieron ${arguments.size}"
+            )
 
         arguments.forEachIndexed { index, it ->
             val argType = it.check(null)
 
             if (argType != formalArguments.values.toList().get(index).typeToken.lexeme)
-                throw Exception("El tipo del parámetro actual no coincide con el tipo del parámetro formal.")
+                throw InvalidCallException(
+                    token,
+                    "El tipo de uno de los parámetros actuales no coincide con el tipo del parámetro formal."
+                )
         }
 
         type = chained?.checkChained(type) ?: type
@@ -261,29 +266,37 @@ class MethodCall(
             throw InvalidChainingException(token)
 
         if (token.lexeme !in symbolTable.classMap[receiverType]!!.methodMap)
-            throw Exception("No existe un método de nombre $token visible en $containerClass")
+            throw InvalidCallException(
+                token,
+                "No se puede resolver el método al que se quiere acceder"
+            )
 
         val methodCalled = symbolTable.classMap[receiverType]!!.methodMap[token.lexeme]!!
 
         if (methodCalled.modifier.lexeme == "static")
-            throw Exception("No se puede acceder a un miembro estático a través de una instancia")
+            throw InvalidCallException(
+                token,
+                "No se puede resolver el método al que se quiere acceder"
+            )
 
         val type = methodCalled.typeToken.lexeme
 
         val formalArguments = methodCalled.paramMap
 
-        if (formalArguments.size > arguments.size)
-        //TODO: tirá como token el primer param de más
-            throw Exception("Se esperaban ${formalArguments.size}, pero se recibieron ${arguments.size}")
-        else if (formalArguments.size < arguments.size)
-        //TODO: tirá como token el último param recibido
-            throw Exception("Se esperaban ${formalArguments.size}, pero se recibieron ${arguments.size}")
+        if (formalArguments.size != arguments.size)
+            throw InvalidCallException(
+                token,
+                "Se esperaban ${formalArguments.size}, pero se recibieron ${arguments.size}"
+            )
 
         arguments.forEachIndexed { index, it ->
             val argType = it.check(null)
 
             if (argType != formalArguments.values.toList().get(index).typeToken.lexeme)
-                throw Exception("El tipo del parámetro actual no coincide con el tipo del parámetro formal.")
+                throw InvalidCallException(
+                    token,
+                    "El tipo de uno de los parámetros actuales no coincide con el tipo del parámetro formal."
+                )
         }
 
         return chained?.checkChained(type)?: type
@@ -317,22 +330,24 @@ class ConstructorCall(
         var type = token.lexeme
 
         if (token.lexeme !in symbolTable.classMap)
-            throw Exception("La clase cuyo constructor se quiere invocar no existe")
+            throw NonExistentClassException(token, "La clase cuyo constructor se quiere invocar no existe" )
 
         val formalArguments = symbolTable.classMap[type]!!.constructor.paramMap
 
-        if (formalArguments.size > arguments.size)
-        //TODO: tirá como token el primer param de más
-            throw Exception("Se esperaban ${formalArguments.size}, pero se recibieron ${arguments.size}")
-        else if (formalArguments.size < arguments.size)
-        //TODO: tirá como token el último param recibido
-            throw Exception("Se esperaban ${formalArguments.size}, pero se recibieron ${arguments.size}")
+        if (formalArguments.size != arguments.size)
+            throw InvalidCallException(
+                token,
+                "Se esperaban ${formalArguments.size}, pero se recibieron ${arguments.size}"
+            )
 
         arguments.forEachIndexed { index, it ->
             val argType = it.check(null)
 
             if (argType != formalArguments.values.toList().get(index).typeToken.lexeme)
-                throw Exception("El tipo del parámetro actual no coincide con el tipo del parámetro formal.")
+                throw InvalidCallException(
+                    token,
+                    "El tipo de uno de los parámetros actuales no coincide con el tipo del parámetro formal."
+                )
         }
 
         type = chained?.checkChained(type) ?: type
@@ -352,7 +367,7 @@ class StaticMethodCall(
     override lateinit var arguments: MutableList<Expression>
     override var chained: Chained? = null
 
-    override fun toString():String {
+    override fun toString(): String {
         return "$token.$calledMethodToken(${arguments})${chained?.let { ".$it" } ?: ""}"
     }
 
@@ -370,13 +385,19 @@ class StaticMethodCall(
 
     override fun check(expectedType: String?): String {
         if (token.lexeme !in symbolTable.classMap)
-            throw Exception("La clase cuyo método se está referenciando no fue declarada.")
+            throw NonExistentClassException(
+                token,
+                "No se puede resolver la clase a la que se está referenciando."
+            )
 
         val calledClass = symbolTable.classMap[token.lexeme]!!
 
         if (calledMethodToken.lexeme !in calledClass.methodMap
             || calledClass.methodMap[calledMethodToken.lexeme]!!.modifier.lexeme != "static")
-            throw Exception("No existe un método estático con ese nombre en la clase que se está referenciando.")
+            throw InvalidCallException(
+                calledMethodToken,
+                "No existe un método estático con de nombre $calledMethodToken en la clase $token."
+            )
 
         val calledMethod = calledClass.methodMap[calledMethodToken.lexeme]!!
 
@@ -384,18 +405,20 @@ class StaticMethodCall(
 
         val formalArguments = calledMethod.paramMap
 
-        if (formalArguments.size > arguments.size)
-            //TODO: tirá como token el primer param de más
-            throw Exception("Se esperaban ${formalArguments.size}, pero se recibieron ${arguments.size}")
-        else if (formalArguments.size < arguments.size)
-            //TODO: tirá como token el último param recibido
-            throw Exception("Se esperaban ${formalArguments.size}, pero se recibieron ${arguments.size}")
+        if (formalArguments.size != arguments.size)
+            throw InvalidCallException(
+                calledMethodToken,
+                "Se esperaban ${formalArguments.size}, pero se recibieron ${arguments.size}"
+            )
 
         arguments.forEachIndexed { index, it ->
             val argType = it.check(null)
 
             if (argType != formalArguments.values.toList().get(index).typeToken.lexeme)
-                throw Exception("El tipo del parámetro actual no coincide con el tipo del parámetro formal.")
+                throw InvalidCallException(
+                    token,
+                    "El tipo de uno de los parámetros actuales no coincide con el tipo del parámetro formal."
+                )
         }
 
         type = chained?.checkChained(type) ?: type
