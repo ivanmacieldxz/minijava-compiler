@@ -61,8 +61,8 @@ class Block(
                     checkIsValidAsSingleSentence(it)
                     it.check(null)
                 }
-                is BinaryExpression -> throw Exception(
-                    "No se admiten expresiones binarias como sentencias sueltas"
+                is BinaryExpression -> throw ExpressionInvalidAsSingleSentenceException(
+                    it.leftExpression.operand.token
                 )
             }
         }
@@ -106,7 +106,7 @@ class If(
         when (val body = body) {
             is Sentence -> {
                 if (body is LocalVar)
-                    throw Exception("No se admiten declaraciones de variables como única sentencia de un if")
+                    throw VarDeclarationAsSingleSentenceException(body.token, token)
 
                 body.check()
             }
@@ -144,7 +144,7 @@ class Else(
         when (val body = body) {
             is Sentence -> {
                 if (body is LocalVar)
-                    throw Exception("No se admiten declaraciones de variables como única sentencia de un else")
+                    throw VarDeclarationAsSingleSentenceException(body.token, token)
                 body.check()
             }
             is Expression -> {
@@ -187,7 +187,7 @@ class While(
         when (val body = body) {
             is Sentence -> {
                 if (body is LocalVar)
-                    throw Exception("No se admiten declaraciones de variables como única sentencia de un else")
+                    throw VarDeclarationAsSingleSentenceException(body.token, token)
                 body.check()
             }
             is Expression -> {
@@ -222,15 +222,18 @@ class Return(
         when (val parent = parentMember) {
             is Method -> {
                 if (body == null && parent.typeToken.lexeme != "void")
-                    throw Exception("Se esperaba que devolviera un valor")
+                    throw InvalidReturnException(token, "Se esperaba que el método devolviera un valor.")
                 else if (body != null && parent.typeToken.lexeme == "void")
-                    throw Exception("No se puede devolver un valor en un método void")
+                    throw InvalidReturnException(token, "Se esperaba que el método no devolviera un valor.")
                 else if (body != null && parent.typeToken.lexeme != "void")
                     (body as Expression).check(parent.typeToken.lexeme)
             }
             is Constructor -> {
                 if (body != null)
-                    throw Exception("No se admite el uso de return con un valor dentro de un constructor")
+                    throw InvalidReturnException(
+                        token,
+                        "No se admite el uso de return con un valor dentro de un constructor"
+                    )
             }
         }
     }
@@ -257,10 +260,16 @@ class LocalVar(
 
     override fun check() {
         type = expression.check(null)
-            ?: throw Exception("Una variable local no puede ser inicializada con null")
+            ?: throw InvalidVarInitializationException(
+                token,
+                "No se admite la inicialización de variables con null"
+            )
 
         if (type == "void")
-            throw Exception("La expresión asignada no devuelve un valor")
+            throw InvalidVarInitializationException(
+                token,
+                "La expresión del lado derecho de la declaración no devuelve un valor."
+            )
     }
 
 }
@@ -296,24 +305,36 @@ class Assignment(
 
     private fun checkLeftSideAssignable() {
         if (leftExpression is BinaryExpression)
-            throw Exception("El lado izquierdo de la asignación no es asignable")
+            throw InvalidAssignmentException(
+                token,
+                "El lado izquierdo de la asignación no es asignable"
+            )
 
         val operand = (leftExpression as BasicExpression).operand
 
         if (operand is Primitive)
-            throw Exception("El lado izquierdo de la asignación no es asignable")
+            throw InvalidAssignmentException(
+                token,
+                "El lado izquierdo de la asignación no es asignable"
+            )
 
         var chained = (operand as Primary).chained
 
         if (chained == null && operand !is VariableAccess)
-            throw Exception("El lado izquierdo de la asignación no es asignable")
+            throw InvalidAssignmentException(
+                token,
+                "El lado izquierdo de la asignación no es asignable"
+            )
 
         while (chained?.chained != null) {
             chained = chained.chained
         }
 
         if (chained != null && chained !is VariableAccess)
-            throw Exception("El lado izquierdo de la asignación no es asignable")
+            throw InvalidAssignmentException(
+                token,
+                "El lado izquierdo de la asignación no es asignable"
+            )
     }
 
 }

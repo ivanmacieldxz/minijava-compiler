@@ -42,7 +42,7 @@ import semanticanalizer.ast.member.Primitive
 import semanticanalizer.ast.member.Return
 import semanticanalizer.ast.member.Sentence
 import semanticanalizer.ast.member.StaticMethodCall
-import semanticanalizer.ast.member.VarDeclarationAsOnlySentenceException
+import semanticanalizer.ast.member.VarDeclarationAsSingleSentenceException
 import semanticanalizer.ast.member.VariableAccess
 import semanticanalizer.ast.member.While
 import symbolTable
@@ -306,7 +306,7 @@ class SyntacticAnalyzerItrImpl(
                                         parent.childrenList.add(it)
                                     }
                                     is CompoundSentence -> {
-                                        throw VarDeclarationAsOnlySentenceException(it.token, parent.token)
+                                        throw VarDeclarationAsSingleSentenceException(it.token, parent.token)
                                     }
                                 }
                             }

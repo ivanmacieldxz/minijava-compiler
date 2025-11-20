@@ -8,7 +8,7 @@ class InvalidUnaryOperatorException(
     type: String
 ): SemanticException("El operador ${token.lexeme} es inválido para el tipo $type", token)
 
-class VarDeclarationAsOnlySentenceException(
+class VarDeclarationAsSingleSentenceException(
     token: Token,
     parentToken: Token
 ): SemanticException("No se admiten declaraciones de variables como única sentencia dentro de un ${parentToken.lexeme}", token)
@@ -72,3 +72,18 @@ class InvalidAttributeAccessException(
     token: Token,
     receiverClass: String
 ): SemanticException("La clase $receiverClass no tiene un atributo $token", token)
+
+class InvalidReturnException(
+    token: Token,
+    message: String
+): SemanticException(message, token)
+
+class InvalidVarInitializationException(
+    token: Token,
+    message: String
+): SemanticException(message, token)
+
+class InvalidAssignmentException(
+    token: Token,
+    message: String
+): SemanticException(message, token)
