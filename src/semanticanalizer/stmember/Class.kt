@@ -24,17 +24,19 @@ open class Class() : Modifiable {
     }
 
     override var token: Token = DummyToken
-    var constructor: Constructor = Constructor(parentClass = this)
+    override var modifier: Token = DummyToken
+    override var declarationCompleted = false
 
+    var constructor: Constructor = Constructor(parentClass = this)
     var parentClassToken: Token = objectToken
     var methodMap = mutableMapOf<String, Method>()
     val attributeMap = mutableMapOf<String, MutableSet<Attribute>>()
+
     var parentClass: Class = Object
 
     var isConsolidated = false
 
-    override var modifier: Token = DummyToken
-    override var declarationCompleted = false
+    val ancestors = mutableSetOf(objectToken.lexeme)
 
     fun consolidate() {
         parentClass = symbolTable.classMap[parentClassToken.lexeme]!!
@@ -184,12 +186,14 @@ open class Class() : Modifiable {
         val border = Stack<Class>()
         withoutCircularity.addAll(setOf(Object, StringClass, System))
 
+        ancestors.add(token.lexeme)
         border.push(this)
 
         while (border.isNotEmpty()) {
             val current = border.pop()
 
             if (current in withoutCircularity) {
+                ancestors.addAll(current.ancestors)
                 break
             }
 
@@ -208,6 +212,7 @@ open class Class() : Modifiable {
                         current.parentClassToken
                     )
 
+                ancestors.add(parentClass.token.lexeme)
                 border.push(parentClass)
             }
 
@@ -275,6 +280,7 @@ object StringClass: Class() {
     init {
         parentClass = Object
         isConsolidated = true
+        ancestors += "String"
     }
 }
 
@@ -416,5 +422,7 @@ object System : Class() {
                 )
             }
         )
+
+        ancestors += "System"
     }
 }

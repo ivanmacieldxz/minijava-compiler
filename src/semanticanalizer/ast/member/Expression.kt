@@ -53,11 +53,10 @@ class BinaryExpression(
                 if (operator.lexeme !in booleanOperators)
                     throw NonApplicableBinaryOperatorException(operator)
             }
-            "char", "String" -> {
+            else -> {
                 if (operator.lexeme !in logicOperators)
                     throw NonApplicableBinaryOperatorException(operator)
             }
-            null -> throw NonApplicableBinaryOperatorException(operator)
         }
 
         rightExpression.check(leftType)
@@ -65,8 +64,8 @@ class BinaryExpression(
         return resultingPrimitiveType(leftType, operator.lexeme)
     }
 
-    private fun resultingPrimitiveType(type: String, operator: String) =
-        when (type) {
+    private fun resultingPrimitiveType(left: String?, operator: String) =
+        when (left) {
             "boolean" -> "boolean"
             "int" -> {
                 if (operator in arithmeticOperators)
@@ -129,20 +128,3 @@ class BasicExpression(
 
 }
 
-class EmptyExpression(
-    override var parentNode: ASTMember
-): Expression {
-
-    override fun check(type: String?): String? {
-        return null
-    }
-
-    override fun printItselfAndChildren(nestingLevel: Int) {
-        println("\t".repeat(nestingLevel) + "Empty Expression")
-    }
-
-    override fun printSubAST(nestingLevel: Int) {
-        println("\t".repeat(nestingLevel) + "Empty Expression")
-    }
-
-}

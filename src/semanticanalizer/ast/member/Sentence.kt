@@ -17,25 +17,6 @@ interface Sentence: ASTMember {
 
 }
 
-class EmptySentence(
-    override var parentMember: Callable,
-    override var parentSentence: Sentence?
-): Sentence {
-
-    override var token: Token = Token.DummyToken
-
-    override fun check() {}
-
-    override fun printItselfAndChildren(nestingLevel: Int) {
-        println("\t".repeat(nestingLevel) + "Sentencia vacía.")
-    }
-
-    override fun printSubAST(nestingLevel: Int) {
-        println("\t".repeat(nestingLevel) + "Sentencia vacía.")
-    }
-
-}
-
 class Block(
     override var parentMember: Callable,
     override var token: Token,
@@ -258,8 +239,7 @@ class Return(
 class LocalVar(
     override var parentMember: Callable,
     override var token: Token,
-    override var parentSentence: Sentence?,
-    var containerBlock: Block
+    override var parentSentence: Sentence?
 ): Sentence {
     lateinit var type: String
     lateinit var varName: Token
@@ -307,9 +287,6 @@ class Assignment(
     }
 
     override fun check() {
-        if (leftExpression is BinaryExpression)
-            throw Exception("El lado izquierdo de la asignación no es asignable")
-
         checkLeftSideAssignable()
 
         rightExpression.check(
@@ -318,6 +295,9 @@ class Assignment(
     }
 
     private fun checkLeftSideAssignable() {
+        if (leftExpression is BinaryExpression)
+            throw Exception("El lado izquierdo de la asignación no es asignable")
+
         val operand = (leftExpression as BasicExpression).operand
 
         if (operand is Primitive)

@@ -46,3 +46,15 @@ class ExpressionInvalidAsSingleSentenceException(
 class InvalidChainingException(
     token: Token
 ): SemanticException("No se puede acceder a un miembro de un tipo primitivo o void.", token)
+
+class TypeMismatchException(
+    token: Token,
+    actualTokenType: String?,
+    expectedType: String
+): SemanticException("El tipo $actualTokenType del operando no coincide con el tipo $expectedType esperado", token)
+
+class UnexpectedNullOperandException(
+    token: Token,
+    expectedType: String
+): SemanticException("Se esperaba un operando de tipo $expectedType, pero se encontró null.", token)
+

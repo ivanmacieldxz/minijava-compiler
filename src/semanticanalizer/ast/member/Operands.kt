@@ -49,7 +49,10 @@ class Primitive(override var token: Token): Operand {
         }
 
         if (expectedType != null && expectedType != type)
-            throw Exception("El tipo del operando no coincide con el tipo esperado")
+            if (type != null)
+                throw TypeMismatchException(token, type, expectedType)
+            else
+                throw UnexpectedNullOperandException(token, expectedType)
 
         return type
     }
@@ -85,14 +88,13 @@ class ParenthesizedExpression(
     }
 
     override fun check(expectedType: String?): String? {
-        val type = expression.check(null)
+        var type = expression.check(null)
 
-        val definitiveType = chained?.checkChained(type) ?: type
+        type = chained?.checkChained(type) ?: type
 
-        if (expectedType != null && definitiveType != expectedType)
-            throw Exception("El tipo del operando no coincide con el esperado")
+        checkCompatibleTypes(expectedType, type, token)
 
-        return definitiveType
+        return type
     }
 }
 
@@ -116,18 +118,17 @@ class LiteralPrimary(
     }
 
     override fun check(expectedType: String?): String {
-        val type = when (token.type) {
+        var type = when (token.type) {
             TokenType.STRING_LITERAL -> "String"
             TokenType.THIS -> containerClass.token.lexeme
             else -> throw Exception("No se debería llegar acá, algo salió mal")
         }
 
-        val definitiveType = chained?.checkChained(type) ?: type
+        type = chained?.checkChained(type) ?: type
 
-        if (expectedType != null && definitiveType != expectedType)
-            throw Exception("El tipo del operando no coincide con el tipo esperado")
+        checkCompatibleTypes(expectedType, type, token)
 
-        return definitiveType
+        return type
     }
 }
 
@@ -166,11 +167,9 @@ class VariableAccess(
             else -> throw Exception("No se puede resolver el símbolo $token")
         }
 
-        if (chained == null) {
-            if (expectedType != null && type != expectedType)
-                throw Exception("El tipo del operando no coincide con el tipo esperado")
-        } else
-            type = chained!!.checkChained(type)
+        type = chained?.checkChained(type) ?: type
+
+        checkCompatibleTypes(expectedType, type, token)
 
         return type
     }
@@ -247,11 +246,9 @@ class MethodCall(
                 throw Exception("El tipo del parámetro actual no coincide con el tipo del parámetro formal.")
         }
 
-        if (chained == null) {
-            if (expectedType != null && type != expectedType)
-                throw Exception("El tipo del operando no coincide con el tipo esperado")
-        } else
-            type = chained!!.checkChained(type)
+        type = chained?.checkChained(type) ?: type
+
+        checkCompatibleTypes(expectedType, type, token)
 
         return type
     }
@@ -338,11 +335,9 @@ class ConstructorCall(
                 throw Exception("El tipo del parámetro actual no coincide con el tipo del parámetro formal.")
         }
 
-        if (chained == null) {
-            if (expectedType != null && type != expectedType)
-                throw Exception("El tipo del operando no coincide con el tipo esperado")
-        } else
-            type = chained!!.checkChained(type)
+        type = chained?.checkChained(type) ?: type
+
+        checkCompatibleTypes(expectedType, type, token)
 
         return type
     }
@@ -403,12 +398,33 @@ class StaticMethodCall(
                 throw Exception("El tipo del parámetro actual no coincide con el tipo del parámetro formal.")
         }
 
-        if (chained == null) {
-            if (expectedType != null && type != expectedType)
-                throw Exception("El tipo del operando no coincide con el tipo esperado")
-        } else
-            type = chained!!.checkChained(type)
+        type = chained?.checkChained(type) ?: type
 
-        return chained?.checkChained(type) ?: type
+        checkCompatibleTypes(expectedType, type, token)
+
+        return type
+    }
+}
+
+fun checkCompatibleTypes(expectedType: String?, actualType: String?, token: Token) {
+    if (expectedType != null) {
+        if (expectedType in primitiveTypesSet && expectedType != "String") {
+            if (actualType == null)
+                throw UnexpectedNullOperandException(token, expectedType)
+
+            if (actualType !in primitiveTypesSet)
+                throw TypeMismatchException(token, actualType, expectedType)
+
+            if (actualType != expectedType)
+                throw TypeMismatchException(token, actualType, expectedType)
+        } else {
+            if (actualType != null) {
+                if (actualType in primitiveTypesSet && actualType != "String")
+                    throw TypeMismatchException(token, actualType, expectedType)
+
+                if (expectedType !in symbolTable.classMap[actualType]!!.ancestors)
+                    throw TypeMismatchException(token, actualType, expectedType)
+            }
+        }
     }
 }

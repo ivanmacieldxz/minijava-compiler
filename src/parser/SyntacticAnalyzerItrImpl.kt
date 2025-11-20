@@ -20,7 +20,6 @@ import semanticanalizer.stmember.Object
 import semanticanalizer.stmember.RepeatedDeclarationException
 import semanticanalizer.SymbolTable.Predefined
 import semanticanalizer.ast.ASTBuilder
-import semanticanalizer.ast.ASTMember
 import semanticanalizer.ast.member.Assignment
 import semanticanalizer.ast.member.AssignmentAsActualArgumentException
 import semanticanalizer.ast.member.AssignmentAsConditionException
@@ -32,7 +31,6 @@ import semanticanalizer.ast.member.Call
 import semanticanalizer.ast.member.CompoundSentence
 import semanticanalizer.ast.member.ConstructorCall
 import semanticanalizer.ast.member.Else
-import semanticanalizer.ast.member.EmptySentence
 import semanticanalizer.ast.member.Expression
 import semanticanalizer.ast.member.If
 import semanticanalizer.ast.member.LiteralPrimary
@@ -301,8 +299,7 @@ class SyntacticAnalyzerItrImpl(
                             astBuilder.currentContext = LocalVar(
                                 symbolTable.currentContext as Callable,
                                 currentToken,
-                                astBuilder.currentContext as Sentence,
-                                astBuilder.blockStack.first()
+                                astBuilder.currentContext as Sentence
                             ).also {
                                 when (val parent = it.parentSentence) {
                                     is Block -> {
