@@ -101,7 +101,8 @@ class ParenthesizedExpression(
 class LiteralPrimary(
     override var token: Token,
     override var parent: ASTMember,
-    var containerClass: Class
+    var containerClass: Class,
+    var containerCallable: Callable
 ): Primary {
     override var chained: Chained? = null
 
@@ -120,7 +121,15 @@ class LiteralPrimary(
     override fun check(expectedType: String?): String {
         var type = when (token.type) {
             TokenType.STRING_LITERAL -> "String"
-            TokenType.THIS -> containerClass.token.lexeme
+            TokenType.THIS -> {
+                if (containerCallable is Method && (containerCallable as Method).modifier.lexeme == "static")
+                    throw AccessToInstanceMemberFromStaticContextException(
+                        token,
+                        "No se puede acceder a this desde un contexto estático"
+                    )
+
+                containerClass.token.lexeme
+            }
             else -> throw Exception("No se debería llegar acá, algo salió mal")
         }
 
@@ -162,6 +171,12 @@ class VariableAccess(
                 containerCallable.paramMap[token.lexeme]!!.typeToken.lexeme
             }
             in containerClass.attributeMap -> {
+                if (containerCallable is Method && (containerCallable as Method).modifier.lexeme == "static")
+                    throw AccessToInstanceMemberFromStaticContextException(
+                        token,
+                        "No se puede acceder a atributos de instancia desde un contexto estático."
+                    )
+
                 containerClass.attributeMap[token.lexeme]!!.first().typeToken.lexeme
             }
             else -> throw InvalidVarAccessException(token)
@@ -228,8 +243,6 @@ class MethodCall(
                 "No se pueden referenciar métodos de instancia desde un contexto estático."
             )
 
-        if (methodCalled.modifier.lexeme == "static")
-            throw InvalidCallException(token,"No se puede resolver el método al que se quiere acceder.")
 
         var type: String = methodCalled.typeToken.lexeme
 
@@ -244,11 +257,10 @@ class MethodCall(
         arguments.forEachIndexed { index, it ->
             val argType = it.check(null)
 
-            if (argType != formalArguments.values.toList().get(index).typeToken.lexeme)
-                throw InvalidCallException(
-                    token,
-                    "El tipo de uno de los parámetros actuales no coincide con el tipo del parámetro formal."
-                )
+            checkCompatibleTypes(
+                formalArguments.values.toList().get(index).typeToken.lexeme,
+                argType, token
+            )
         }
 
         type = chained?.checkChained(type) ?: type
@@ -292,11 +304,10 @@ class MethodCall(
         arguments.forEachIndexed { index, it ->
             val argType = it.check(null)
 
-            if (argType != formalArguments.values.toList().get(index).typeToken.lexeme)
-                throw InvalidCallException(
-                    token,
-                    "El tipo de uno de los parámetros actuales no coincide con el tipo del parámetro formal."
-                )
+            checkCompatibleTypes(
+                formalArguments.values.toList().get(index).typeToken.lexeme,
+                argType, token
+            )
         }
 
         return chained?.checkChained(type)?: type
@@ -343,11 +354,10 @@ class ConstructorCall(
         arguments.forEachIndexed { index, it ->
             val argType = it.check(null)
 
-            if (argType != formalArguments.values.toList().get(index).typeToken.lexeme)
-                throw InvalidCallException(
-                    token,
-                    "El tipo de uno de los parámetros actuales no coincide con el tipo del parámetro formal."
-                )
+            checkCompatibleTypes(
+                formalArguments.values.toList().get(index).typeToken.lexeme,
+                argType, token
+            )
         }
 
         type = chained?.checkChained(type) ?: type
@@ -414,11 +424,10 @@ class StaticMethodCall(
         arguments.forEachIndexed { index, it ->
             val argType = it.check(null)
 
-            if (argType != formalArguments.values.toList().get(index).typeToken.lexeme)
-                throw InvalidCallException(
-                    token,
-                    "El tipo de uno de los parámetros actuales no coincide con el tipo del parámetro formal."
-                )
+            checkCompatibleTypes(
+                formalArguments.values.toList().get(index).typeToken.lexeme,
+                argType, token
+            )
         }
 
         type = chained?.checkChained(type) ?: type
@@ -445,8 +454,12 @@ fun checkCompatibleTypes(expectedType: String?, actualType: String?, token: Toke
                 if (actualType in primitiveTypesSet && actualType != "String")
                     throw TypeMismatchException(token, actualType, expectedType)
 
-                if (expectedType !in symbolTable.classMap[actualType]!!.ancestors)
+                if (expectedType !in symbolTable.classMap[actualType]!!.ancestors) {
+                    println(symbolTable.classMap[actualType]!!.ancestors)
+                    println(expectedType)
+
                     throw TypeMismatchException(token, actualType, expectedType)
+                }
             }
         }
     }

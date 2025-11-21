@@ -22,7 +22,11 @@ public class Test {
         }
     }
 
-    static class Y {
+    static class Y extends X {
+
+        static void y() {
+
+        }
 
         public static void main(String[] args) {
             int x = 2; //puedo hacer shadow de atributos :)

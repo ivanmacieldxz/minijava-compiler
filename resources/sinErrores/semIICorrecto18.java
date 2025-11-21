@@ -43,7 +43,7 @@ class Init {
     B b;
     C c;
     int z;
-    static void main() {
+    void z() {
 
 
         a = new A();

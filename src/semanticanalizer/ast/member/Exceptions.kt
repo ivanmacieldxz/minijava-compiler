@@ -87,3 +87,8 @@ class InvalidAssignmentException(
     token: Token,
     message: String
 ): SemanticException(message, token)
+
+class AccessToInstanceMemberFromStaticContextException(
+    token: Token,
+    message: String
+): SemanticException(message, token)

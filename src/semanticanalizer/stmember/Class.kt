@@ -184,16 +184,24 @@ open class Class() : Modifiable {
         //cambiaría muy poco en tal caso (tendrías que guardar el camino inválido
         //para no invalidar ramas válidas de herencia
         val border = Stack<Class>()
+        val inheritanceCircuit = mutableListOf<Class>()
         withoutCircularity.addAll(setOf(Object, StringClass, System))
 
-        ancestors.add(token.lexeme)
         border.push(this)
 
         while (border.isNotEmpty()) {
             val current = border.pop()
 
+            inheritanceCircuit.add(current)
+
+            inheritanceCircuit.forEach {
+                it.ancestors.add(current.token.lexeme)
+            }
+
             if (current in withoutCircularity) {
-                ancestors.addAll(current.ancestors)
+                inheritanceCircuit.forEach {
+                    it.ancestors.addAll(current.ancestors)
+                }
                 break
             }
 
@@ -206,13 +214,13 @@ open class Class() : Modifiable {
             mightOrDoHaveCircularity.add(current)
 
             if (current.hasExplicitParent()) {
+                println("Clase: ${current.token}, Padre: ${current.parentClassToken}")
                 val parentClass = symbolTable.classMap[current.parentClassToken.lexeme]
                     ?: throw UndeclaredClassException(
                         "La clase padre ${current.parentClassToken} no está declarada",
                         current.parentClassToken
                     )
 
-                ancestors.add(parentClass.token.lexeme)
                 border.push(parentClass)
             }
 

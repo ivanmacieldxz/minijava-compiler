@@ -631,7 +631,8 @@ class SyntacticAnalyzerItrImpl(
                                     operand = LiteralPrimary(
                                         currentToken,
                                         this,
-                                        symbolTable.currentClass
+                                        symbolTable.currentClass,
+                                        symbolTable.currentContext as Callable
                                     )
                                     astBuilder.currentContext = operand
                                 }
@@ -1043,6 +1044,7 @@ class SyntacticAnalyzerItrImpl(
                                 if (stContext.declarationCompleted.not()) {
                                     if (symbolTable.accumulator.modifier.type == TokenType.ABSTRACT) {
                                         addMethod()
+                                        symbolTable.currentContext = symbolTable.currentClass
                                     } else
                                         throw InvalidMethodDeclarationException(
                                             "declaración de método concreto sin cuerpo.",

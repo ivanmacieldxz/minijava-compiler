@@ -21,9 +21,10 @@ class BinaryExpression(
     companion object {
         private val logicOperators = setOf("||", "&&")
         private val arithmeticOperators = setOf("+", "-", "*", "/", "%")
-        private val comparisonOperators = setOf("==", "!=", "<", ">", ">=", "<=")
-        private val intOperators = comparisonOperators + arithmeticOperators
-        private val booleanOperators = logicOperators + setOf("==" + "!=")
+        private val equalityComparisonOperators = setOf("==", "!=")
+        private val comparisonOperators = setOf("<", ">", ">=", "<=")
+        private val intOperators = equalityComparisonOperators + comparisonOperators + arithmeticOperators
+        private val booleanOperators = logicOperators + equalityComparisonOperators
     }
 
     override fun printItselfAndChildren(nestingLevel: Int) {
@@ -54,12 +55,14 @@ class BinaryExpression(
                     throw NonApplicableBinaryOperatorException(operator)
             }
             else -> {
-                if (operator.lexeme !in logicOperators)
+                if (operator.lexeme !in equalityComparisonOperators)
                     throw NonApplicableBinaryOperatorException(operator)
             }
         }
 
-        rightExpression.check(leftType)
+        val rightType = rightExpression.check(null)
+
+        checkCompatibleTypes(leftType, rightType, operator)
 
         return resultingPrimitiveType(leftType, operator.lexeme)
     }

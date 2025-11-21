@@ -225,8 +225,11 @@ class Return(
                     throw InvalidReturnException(token, "Se esperaba que el método devolviera un valor.")
                 else if (body != null && parent.typeToken.lexeme == "void")
                     throw InvalidReturnException(token, "Se esperaba que el método no devolviera un valor.")
-                else if (body != null && parent.typeToken.lexeme != "void")
-                    (body as Expression).check(parent.typeToken.lexeme)
+                else if (body != null && parent.typeToken.lexeme != "void") {
+                    val typeOfReturn = (body as Expression).check(null)
+
+                    checkCompatibleTypes(parent.typeToken.lexeme, typeOfReturn, token)
+                }
             }
             is Constructor -> {
                 if (body != null)
@@ -298,9 +301,10 @@ class Assignment(
     override fun check() {
         checkLeftSideAssignable()
 
-        rightExpression.check(
-            leftExpression.check(null)
-        )
+        val leftType = leftExpression.check(null)
+        val rightType = rightExpression.check(null)
+
+        checkCompatibleTypes(leftType, rightType, token)
     }
 
     private fun checkLeftSideAssignable() {
