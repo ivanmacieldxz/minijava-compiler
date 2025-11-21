@@ -14,7 +14,7 @@ class A {
     }
 
 }
-static class B {
+class B {
     int a;
     static void a() {
 

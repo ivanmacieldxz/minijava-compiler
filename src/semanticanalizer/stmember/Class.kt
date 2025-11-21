@@ -151,6 +151,12 @@ open class Class() : Modifiable {
         if (this == Object || this == System || this == StringClass)
             return
 
+        if (modifier.type == STATIC)
+            throw InvalidClassDeclarationException(
+                "No se admiten clases estáticas no anidadas.",
+                modifier
+            )
+
         val parentClass = symbolTable.classMap[parentClassToken.lexeme]
             ?: throw UndeclaredClassException(
                 "La clase padre $parentClassToken no está declarada",
@@ -214,7 +220,6 @@ open class Class() : Modifiable {
             mightOrDoHaveCircularity.add(current)
 
             if (current.hasExplicitParent()) {
-                println("Clase: ${current.token}, Padre: ${current.parentClassToken}")
                 val parentClass = symbolTable.classMap[current.parentClassToken.lexeme]
                     ?: throw UndeclaredClassException(
                         "La clase padre ${current.parentClassToken} no está declarada",
