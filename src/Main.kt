@@ -30,10 +30,6 @@ fun main(args: Array<String>) {
 
         //printAST()
 
-        symbolTable.classMap.forEach {
-            println("Clase ${it.value.token}: ${it.value.methodMap.values}")
-        }
-
         symbolTable.checkSentences()
 
     } catch (e: LexicalException) {

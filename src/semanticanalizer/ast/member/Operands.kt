@@ -190,7 +190,7 @@ class VariableAccess(
     }
 
     override fun checkChained(receiverType: String?): String {
-        if (receiverType == "void" || receiverType in primitiveTypesSet && receiverType != "String")
+        if (receiverType == "void" || receiverType in primitiveTypesSet)
             throw InvalidChainingException(token)
 
         if (token.lexeme !in symbolTable.classMap[receiverType]!!.attributeMap)
@@ -274,7 +274,7 @@ class MethodCall(
         if (receiverType == "void")
             throw InvalidChainingException(token)
 
-        if (receiverType in primitiveTypesSet && receiverType != "String")
+        if (receiverType in primitiveTypesSet)
             throw InvalidChainingException(token)
 
         if (token.lexeme !in symbolTable.classMap[receiverType]!!.methodMap)
@@ -440,7 +440,7 @@ class StaticMethodCall(
 
 fun checkCompatibleTypes(expectedType: String?, actualType: String?, token: Token) {
     if (expectedType != null) {
-        if (expectedType in primitiveTypesSet && expectedType != "String") {
+        if (expectedType in primitiveTypesSet) {
             if (actualType == null)
                 throw UnexpectedNullOperandException(token, expectedType)
 
@@ -451,7 +451,7 @@ fun checkCompatibleTypes(expectedType: String?, actualType: String?, token: Toke
                 throw TypeMismatchException(token, actualType, expectedType)
         } else {
             if (actualType != null) {
-                if (actualType in primitiveTypesSet && actualType != "String")
+                if (actualType in primitiveTypesSet)
                     throw TypeMismatchException(token, actualType, expectedType)
 
                 if (expectedType !in symbolTable.classMap[actualType]!!.ancestors) {

@@ -3,7 +3,7 @@ package semanticanalizer.ast.member
 import semanticanalizer.ast.ASTMember
 import utils.Token
 
-val primitiveTypesSet = setOf("int", "boolean", "char", "String")
+val primitiveTypesSet = setOf("int", "boolean", "char")
 
 interface Expression: ASTMember {
     var parentNode: ASTMember

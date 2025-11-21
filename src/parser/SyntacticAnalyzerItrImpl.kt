@@ -503,6 +503,9 @@ class SyntacticAnalyzerItrImpl(
                                     is ParenthesizedExpression -> {
                                         parent.expression = it
                                     }
+                                    is LocalVar -> {
+                                        parent.expression = it
+                                    }
                                 }
                             }
 
