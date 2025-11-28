@@ -16,7 +16,7 @@ interface Operand: ASTMember {
     fun check(expectedType: String?): String?
 }
 
-interface Call {
+interface Call: Primary {
     var arguments: MutableList<Expression>
 }
 
@@ -317,7 +317,7 @@ class MethodCall(
 class ConstructorCall(
     override var token: Token,
     override var parent: ASTMember
-): Primary, Call {
+): Call {
     override lateinit var arguments: MutableList<Expression>
     override var chained: Chained? = null
 
@@ -372,7 +372,7 @@ class StaticMethodCall(
     override var parent: ASTMember,
     override var token: Token,
     var calledMethodToken: Token
-): Primary, Call {
+): Call {
 
     override lateinit var arguments: MutableList<Expression>
     override var chained: Chained? = null
