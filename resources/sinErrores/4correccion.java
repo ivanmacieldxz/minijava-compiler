@@ -5,7 +5,7 @@ class A{
 
     void m1(int p1){
         var c = new C();
-        p1 = ++new C().mx().m2();
+        p1 = new C().mx().m2();
     }
     int m2(){
         return 10;

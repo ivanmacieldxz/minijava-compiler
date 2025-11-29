@@ -147,7 +147,7 @@ class VariableAccess(
     var containerClass: Class,
     var containerCallable: Callable,
     var containerBlock: Block
-): Primary, Chained {
+): Chained {
     override var chained: Chained? = null
 
     override fun toString(): String {

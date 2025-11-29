@@ -1,7 +1,6 @@
 package semanticanalizer.ast.member
 
 import semanticanalizer.ast.ASTMember
-import symbolTable
 import utils.Token
 
 val primitiveTypesSet = setOf("int", "boolean", "char")
@@ -114,12 +113,20 @@ class BasicExpression(
 
         return operator?.let {
 
-            //TODO: reemplazar este if por fijarme que el final de la cadena no sea un acceso a variable
-            if (operand is Primary && (operand as Primary).chained != null)
-                throw object: InvalidUnaryOperatorException(operator!!, operandType!!) {
-                    override val message: String
-                        get() = "No se puede aplicar incremento ni decremento sobre valores de retorno."
-                }
+            if (operand is Primary) {
+                var endOfChaining = operand as Primary
+
+                while (endOfChaining.chained != null)
+                    endOfChaining = endOfChaining.chained!!
+
+                if (endOfChaining !is VariableAccess)
+                    throw object: InvalidUnaryOperatorException(operator!!, operandType!!) {
+                        override val message: String
+                            get() = "Los operadores de incremento y decremento son aplicables solo sobre " +
+                                    "accesos a variables"
+                    }
+            }
+
 
             resultingType(operandType, it)
         } ?: operandType
