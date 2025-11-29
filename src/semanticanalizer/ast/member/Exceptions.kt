@@ -3,7 +3,7 @@ package semanticanalizer.ast.member
 import semanticanalizer.SemanticException
 import utils.Token
 
-class InvalidUnaryOperatorException(
+open class InvalidUnaryOperatorException(
     token: Token,
     type: String
 ): SemanticException("El operador ${token.lexeme} es inválido para el tipo $type", token)

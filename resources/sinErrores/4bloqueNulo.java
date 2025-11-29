@@ -1,5 +1,5 @@
 ///[SinErrores]
-class A{
+class X{
     static void main(){
 
     }

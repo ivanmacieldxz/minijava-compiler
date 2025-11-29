@@ -361,8 +361,11 @@ private fun checkIsValidAsSingleSentence(basicExpression: BasicExpression) {
         chained = chained.chained
     }
 
-    if (chained != null && chained !is Call
-        && chained is VariableAccess && operator != TokenType.DECREMENT && operator != TokenType.INCREMENT)
+    if (chained != null) {
+        if (chained !is Call && chained is VariableAccess
+            && operator != TokenType.DECREMENT && operator != TokenType.INCREMENT)
+        throw ExpressionInvalidAsSingleSentenceException(basicExpression.operator ?: operand.token)
+    } else if (operand !is Call && (operand !is VariableAccess || operator != TokenType.DECREMENT && operator != TokenType.INCREMENT))
         throw ExpressionInvalidAsSingleSentenceException(basicExpression.operator ?: operand.token)
 
 }

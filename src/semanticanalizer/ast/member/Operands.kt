@@ -285,7 +285,7 @@ class MethodCall(
 
         val methodCalled = symbolTable.classMap[receiverType]!!.methodMap[token.lexeme]!!
 
-        if (methodCalled.modifier.lexeme == "static")
+        if (methodCalled.modifier.lexeme == "static" && receiverType !in containerClass.ancestors)
             throw InvalidCallException(
                 token,
                 "No se puede resolver el método al que se quiere acceder"
@@ -454,12 +454,8 @@ fun checkCompatibleTypes(expectedType: String?, actualType: String?, token: Toke
                 if (actualType in primitiveTypesSet)
                     throw TypeMismatchException(token, actualType, expectedType)
 
-                if (expectedType !in symbolTable.classMap[actualType]!!.ancestors) {
-                    println(symbolTable.classMap[actualType]!!.ancestors)
-                    println(expectedType)
-
+                if (expectedType !in symbolTable.classMap[actualType]!!.ancestors)
                     throw TypeMismatchException(token, actualType, expectedType)
-                }
             }
         }
     }

@@ -6,7 +6,7 @@ class A {
     boolean b2;
 
     B be;
-    B be2;
+    A be2;
      void m1(){
          b1 = true;
          b1 = 3 >= 4;
@@ -17,6 +17,11 @@ class A {
 
         b1 = be == be2;
          b1 = be != be2;
+         b1 = be2 == be;
+         b1 = be == null;
+         b1 = null == be;
+
+         b1 = null == null;
     }
     
 

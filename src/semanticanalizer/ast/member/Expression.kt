@@ -1,6 +1,7 @@
 package semanticanalizer.ast.member
 
 import semanticanalizer.ast.ASTMember
+import symbolTable
 import utils.Token
 
 val primitiveTypesSet = setOf("int", "boolean", "char")
@@ -62,9 +63,13 @@ class BinaryExpression(
 
         val rightType = rightExpression.check(null)
 
-        checkCompatibleTypes(leftType, rightType, operator)
+        checkCompatibleExpressionTypes(leftType, rightType, operator)
 
-        return resultingPrimitiveType(leftType, operator.lexeme)
+        val expType = resultingPrimitiveType(leftType, operator.lexeme)
+
+        checkCompatibleTypes(type, expType, operator)
+
+        return expType
     }
 
     private fun resultingPrimitiveType(left: String?, operator: String) =
@@ -84,7 +89,7 @@ class BinaryExpression(
 }
 
 class BasicExpression(
-    override var parentNode: ASTMember,
+    override var parentNode: ASTMember
 ): Expression {
     var operator: Token? = null
     lateinit var operand: Operand
@@ -108,6 +113,14 @@ class BasicExpression(
         val operandType = operand.check(type)
 
         return operator?.let {
+
+            //TODO: reemplazar este if por fijarme que el final de la cadena no sea un acceso a variable
+            if (operand is Primary && (operand as Primary).chained != null)
+                throw object: InvalidUnaryOperatorException(operator!!, operandType!!) {
+                    override val message: String
+                        get() = "No se puede aplicar incremento ni decremento sobre valores de retorno."
+                }
+
             resultingType(operandType, it)
         } ?: operandType
     }
@@ -131,3 +144,18 @@ class BasicExpression(
 
 }
 
+fun checkCompatibleExpressionTypes(leftType: String?, rightType: String?, token: Token) {
+    if (leftType == null && rightType in primitiveTypesSet || leftType in primitiveTypesSet && rightType == null)
+        throw UnexpectedNullOperandException(token, (leftType ?: rightType)!!)
+
+    if (leftType in primitiveTypesSet) {
+        if (rightType !in primitiveTypesSet)
+            throw TypeMismatchException(token, rightType, leftType!!)
+
+        if (rightType != leftType)
+            throw TypeMismatchException(token, rightType, leftType!!)
+    } else {
+        if (rightType in primitiveTypesSet)
+            throw TypeMismatchException(token, rightType, leftType!!)
+    }
+}
