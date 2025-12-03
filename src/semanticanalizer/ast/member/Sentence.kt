@@ -1,5 +1,6 @@
 package semanticanalizer.ast.member
 
+import fileWriter
 import semanticanalizer.ast.ASTMember
 import semanticanalizer.stmember.Callable
 import semanticanalizer.stmember.Constructor
@@ -17,7 +18,7 @@ interface Sentence: ASTMember {
 
 }
 
-class Block(
+open class Block(
     override var parentMember: Callable,
     override var token: Token,
     override var parentSentence: Sentence? = null
@@ -67,6 +68,16 @@ class Block(
             }
         }
     }
+
+    override fun generateCode() {
+        //TODO: reserva de espacio para variables locales
+
+        childrenList.forEach {
+            it.generateCode()
+        }
+
+        fileWriter.writeFreeLocalVars(visibleVariablesMap.size)
+    }
 }
 
 interface CompoundSentence: Sentence {
@@ -97,6 +108,10 @@ class If(
         condition?.printSubAST(nestingLevel + 1)
         body?.printSubAST(nestingLevel + 1)
         elseSentence?.printSubAST(nestingLevel)
+    }
+
+    override fun generateCode() {
+        TODO("Not yet implemented")
     }
 
     override fun check() {
@@ -140,6 +155,10 @@ class Else(
         body?.printSubAST(nestingLevel + 1)
     }
 
+    override fun generateCode() {
+        TODO("Not yet implemented")
+    }
+
     override fun check() {
         when (val body = body) {
             is Sentence -> {
@@ -181,6 +200,10 @@ class While(
         body?.printSubAST(nestingLevel + 1)
     }
 
+    override fun generateCode() {
+        TODO("Not yet implemented")
+    }
+
     override fun check() {
         condition!!.check("boolean")
 
@@ -216,6 +239,10 @@ class Return(
     override fun printSubAST(nestingLevel: Int) {
         println("\t".repeat(nestingLevel) + "Return:")
         body?.printSubAST(nestingLevel + 1)
+    }
+
+    override fun generateCode() {
+        TODO("Not yet implemented")
     }
 
     override fun check() {
@@ -261,6 +288,10 @@ class LocalVar(
         expression.printSubAST(nestingLevel + 1)
     }
 
+    override fun generateCode() {
+        TODO("Not yet implemented")
+    }
+
     override fun check() {
         type = expression.check(null)
             ?: throw InvalidVarInitializationException(
@@ -296,6 +327,10 @@ class Assignment(
         println("\t".repeat(nestingLevel) + "Asignacion:")
         leftExpression.printSubAST(nestingLevel + 1)
         rightExpression.printSubAST(nestingLevel + 1)
+    }
+
+    override fun generateCode() {
+        TODO("Not yet implemented")
     }
 
     override fun check() {

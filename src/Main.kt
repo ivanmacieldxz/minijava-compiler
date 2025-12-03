@@ -1,6 +1,8 @@
 import lexer.LexicalAnalyzer
 import lexer.LexicalAnalyzerImpl
 import lexer.LexicalException
+import outsourcemanager.CodeFileGenerator
+import outsourcemanager.CodeFileGeneratorImpl
 import parser.SyntacticAnalyzerItrImpl
 import parser.SyntacticException
 import semanticanalizer.SemanticException
@@ -10,6 +12,7 @@ import sourcemanager.SourceManager
 import sourcemanager.SourceManagerEfImpl
 
 lateinit var symbolTable: SymbolTable
+lateinit var fileWriter: CodeFileGenerator
 
 fun main(args: Array<String>) {
 
@@ -18,19 +21,23 @@ fun main(args: Array<String>) {
     val sourceManager: SourceManager = SourceManagerEfImpl()
     val lexer: LexicalAnalyzer = LexicalAnalyzerImpl(sourceManager)
     val parser = SyntacticAnalyzerItrImpl(lexer)
+    fileWriter = CodeFileGeneratorImpl()
     var wereErrors = false
 
 
     try {
-        sourceManager.open(args[0])
+        sourceManager.open("resources/sinErrores/${args[0]}")
         parser.start()
 
         symbolTable.checkDeclarations()
         symbolTable.consolidate()
 
-        //printAST()
-
         symbolTable.checkSentences()
+
+        fileWriter.createFile("resources/out/${args[1]}")
+        symbolTable.generateCode()
+
+
 
     } catch (e: LexicalException) {
         print(e.errorReport())

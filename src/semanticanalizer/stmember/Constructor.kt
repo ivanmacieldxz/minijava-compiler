@@ -1,8 +1,10 @@
 package semanticanalizer.stmember
 
+import fileWriter
 import semanticanalizer.ast.member.Block
 import utils.Token
 import utils.Token.DummyToken
+import java.io.FileWriter
 import java.util.Collections
 
 class Constructor(
@@ -24,6 +26,17 @@ class Constructor(
             it.isWellDeclared()
         }
     }
+
+    override fun generateCode() {
+        fileWriter.writeLabeledInstruction(getCodeLabel(), "LOADFP")
+        fileWriter.write("LOADSP")
+        fileWriter.write("STOREFP")
+        fileWriter.write("FMEM ${paramMap.size}")
+        fileWriter.write("STOREFP")
+        fileWriter.write("RET 1")
+    }
+
+    override fun getCodeLabel(): String = "constructor@${parentClass.token.lexeme}"
 
     fun isDefaultConstructor(): Boolean {
         return token == DummyToken

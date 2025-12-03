@@ -1,5 +1,7 @@
 package semanticanalizer.stmember
 
+import fileWriter
+import semanticanalizer.ast.member.Block
 import symbolTable
 import utils.Token
 import utils.Token.DummyToken
@@ -237,12 +239,8 @@ open class Class() : Modifiable {
 
     private fun hasExplicitParent() = parentClassToken != objectToken
 
-    fun owns(method: Method): Boolean {
-        return method.parentClass === this
-    }
-
     override fun toString(): String {
-        var strRep = "$modifier $token.lexeme extends ${parentClassToken}"
+        var strRep = "$modifier $token.lexeme extends $parentClassToken"
 
         strRep += "- Constructor: $constructor"
 
@@ -257,6 +255,30 @@ open class Class() : Modifiable {
         }
 
         return strRep
+    }
+
+    override fun generateCode() {
+        //vtable
+        fileWriter.writeDataSectionHeader()
+        //TODO: revisar esto del nop
+        fileWriter.writeLabeledInstruction("vt${token.lexeme}", "NOP")
+
+        methodMap.takeIf { it.isNotEmpty() }?.let {
+            fileWriter.writeCodeSectionHeader()
+
+            it.values.forEach { met ->
+                met.takeIf { this.owns(met) }?.generateCode()
+            }
+        }
+
+        //TODO: generación de constructores
+        constructor.generateCode()
+
+        fileWriter.write("")
+    }
+
+    fun owns(method: Method): Boolean {
+        return method.parentClass === this
     }
 }
 
@@ -282,8 +304,27 @@ object Object: Class() {
                         it
                     )
                 )
+                it.block = object: Block(
+                    it,
+                    DummyToken,
+                    null
+                ) {
+                    override fun check() {}
+
+                    override fun generateCode() {
+                        fileWriter.write("LOAD 3")
+                        fileWriter.write("IPRINT")
+                    }
+                }
             }
         )
+
+        constructor.token = Token(CLASS_IDENTIFIER, "Object", -1)
+
+    }
+
+    override fun generateCode() {
+        super.generateCode()
     }
 }
 
@@ -314,6 +355,21 @@ object System : Class() {
             ).also {
                 it.typeToken = intToken
                 it.modifier = staticToken
+
+                it.block = object: Block(
+                    it,
+                    DummyToken,
+                    null
+                ) {
+                    override fun check() {}
+
+                    override fun generateCode() {
+                        fileWriter.write("READ")
+                        fileWriter.writePush("48")
+                        fileWriter.write("SUB")
+                        fileWriter.writeStore(3)
+                    }
+                }
             },
             "printB" to Method(
                 Token(MET_VAR_IDENTIFIER, "printB", -1),
@@ -328,6 +384,19 @@ object System : Class() {
                         it
                     )
                 )
+
+                it.block = object: Block(
+                    it,
+                    DummyToken,
+                    null
+                ) {
+                    override fun check() {}
+
+                    override fun generateCode() {
+                        fileWriter.writeLoad(3)
+                        fileWriter.write("BPRINT")
+                    }
+                }
             },
             "printC" to Method(
                 Token(MET_VAR_IDENTIFIER, "printC", -1),
@@ -342,6 +411,19 @@ object System : Class() {
                         it
                     )
                 )
+
+                it.block = object: Block(
+                    it,
+                    DummyToken,
+                    null
+                ) {
+                    override fun check() {}
+
+                    override fun generateCode() {
+                        fileWriter.writeLoad(3)
+                        fileWriter.write("CPRINT")
+                    }
+                }
             },
             "printI" to Method(
                 Token(MET_VAR_IDENTIFIER, "printI", -1),
@@ -356,6 +438,19 @@ object System : Class() {
                         it
                     )
                 )
+
+                it.block = object: Block(
+                    it,
+                    DummyToken,
+                    null
+                ) {
+                    override fun check() {}
+
+                    override fun generateCode() {
+                        fileWriter.writeLoad(3)
+                        fileWriter.write("IPRINT")
+                    }
+                }
             },
             "printS" to Method(
                 Token(MET_VAR_IDENTIFIER, "printS", -1),
@@ -370,6 +465,19 @@ object System : Class() {
                         it
                     )
                 )
+
+                it.block = object: Block(
+                    it,
+                    DummyToken,
+                    null
+                ) {
+                    override fun check() {}
+
+                    override fun generateCode() {
+                        fileWriter.writeLoad(3)
+                        fileWriter.write("SPRINT")
+                    }
+                }
             },
             "println" to Method(
                 Token(MET_VAR_IDENTIFIER, "println", -1),
@@ -391,6 +499,18 @@ object System : Class() {
                         it
                     )
                 )
+
+                it.block = object: Block(
+                    it,
+                    DummyToken,
+                    null
+                ) {
+                    override fun check() {}
+
+                    override fun generateCode() {
+                        fileWriter.write("PRNLN")
+                    }
+                }
             },
             "printCln" to Method(
                 Token(MET_VAR_IDENTIFIER, "printCln", -1),
@@ -405,6 +525,20 @@ object System : Class() {
                         it
                     )
                 )
+
+                it.block = object: Block(
+                    it,
+                    DummyToken,
+                    null
+                ) {
+                    override fun check() {}
+
+                    override fun generateCode() {
+                        fileWriter.writeLoad(3)
+                        fileWriter.write("CPRINT")
+                        fileWriter.write("PRNLN")
+                    }
+                }
             },
             "printIln" to Method(
                 Token(MET_VAR_IDENTIFIER, "printIln", -1),
@@ -419,6 +553,20 @@ object System : Class() {
                         it
                     )
                 )
+
+                it.block = object: Block(
+                    it,
+                    DummyToken,
+                    null
+                ) {
+                    override fun check() {}
+
+                    override fun generateCode() {
+                        fileWriter.writeLoad(3)
+                        fileWriter.write("IPRINT")
+                        fileWriter.write("PRNLN")
+                    }
+                }
             },
             "printSln" to Method(
                 Token(MET_VAR_IDENTIFIER, "printSln", -1),
@@ -433,6 +581,20 @@ object System : Class() {
                         it
                     )
                 )
+
+                it.block = object: Block(
+                    it,
+                    DummyToken,
+                    null
+                ) {
+                    override fun check() {}
+
+                    override fun generateCode() {
+                        fileWriter.writeLoad(3)
+                        fileWriter.write("SPRINT")
+                        fileWriter.write("PRNLN")
+                    }
+                }
             }
         )
 

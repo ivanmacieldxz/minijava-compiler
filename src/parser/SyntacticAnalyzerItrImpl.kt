@@ -143,7 +143,7 @@ class SyntacticAnalyzerItrImpl(
                                 expectedElementsStack.addFirst(NonTerminal.MODIFIER)
 
                                 symbolTable.currentContext = Method(
-                                    parentClass = symbolTable.currentClass
+                                    symbolTable.currentClass
                                 ).apply {
                                     this.modifier = currentToken
                                 }
@@ -153,7 +153,7 @@ class SyntacticAnalyzerItrImpl(
                                 expectedElementsStack.addFirst(TokenType.VOID)
 
                                 symbolTable.currentContext = Method(
-                                    parentClass = symbolTable.currentClass
+                                    symbolTable.currentClass
                                 ).apply {
                                     this.typeToken = currentToken
                                 }
@@ -825,6 +825,7 @@ class SyntacticAnalyzerItrImpl(
                                         )
 
                                     currentContext.token = prevToken
+
                                 }
                                 is FormalArgument -> {
                                     currentContext.typeToken = prevToken
@@ -969,7 +970,9 @@ class SyntacticAnalyzerItrImpl(
                                         symbolTable.currentContext = Method(
                                             prevToken,
                                             symbolTable.currentClass
-                                        ).also { it.typeToken = symbolTable.accumulator.memberType }
+                                        ).also {
+                                            it.typeToken = symbolTable.accumulator.memberType
+                                        }
                                     } else if (currentToken.type == TokenType.SEMICOLON) {
                                         symbolTable.currentClass.attributeMap.putIfAbsentOrError(
                                             prevToken.lexeme,

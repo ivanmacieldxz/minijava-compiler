@@ -1,11 +1,13 @@
 package semanticanalizer.ast.member
 
+import fileWriter
 import semanticanalizer.ast.ASTMember
 import semanticanalizer.stmember.Callable
 import semanticanalizer.stmember.Class
 import semanticanalizer.stmember.Method
 import symbolTable
 import utils.Token
+import utils.Token.DummyToken
 import utils.TokenType
 import kotlin.collections.contains
 import kotlin.collections.first
@@ -56,6 +58,11 @@ class Primitive(override var token: Token): Operand {
 
         return type
     }
+
+    override fun generateCode() {
+        //TODO: considerar los casos en los que no es un entero el primitivo
+        fileWriter.writePush(token.lexeme)
+    }
 }
 
 interface Primary : Operand {
@@ -85,6 +92,10 @@ class ParenthesizedExpression(
             println("\t".repeat(nestingLevel + 1) + "Encadenado:")
             it.printSubAST(nestingLevel + 1)
         }
+    }
+
+    override fun generateCode() {
+        TODO("Not yet implemented")
     }
 
     override fun check(expectedType: String?): String? {
@@ -139,6 +150,10 @@ class LiteralPrimary(
 
         return type
     }
+
+    override fun generateCode() {
+        fileWriter.writePush(token.lexeme)
+    }
 }
 
 class VariableAccess(
@@ -160,6 +175,10 @@ class VariableAccess(
             println("\t".repeat(nestingLevel + 1) + "Encadenado:")
             it.printSubAST(nestingLevel + 1)
         }
+    }
+
+    override fun generateCode() {
+        TODO("Not yet implemented")
     }
 
     override fun check(expectedType: String?): String {
@@ -312,6 +331,16 @@ class MethodCall(
 
         return chained?.checkChained(type)?: type
     }
+
+    override fun generateCode() {
+        val calledMethod = containerClass.methodMap[token.lexeme]!!
+
+        arguments.forEach { it.generateCode() }
+
+        fileWriter.writePush(calledMethod.getCodeLabel())
+        fileWriter.writeCall()
+
+    }
 }
 
 class ConstructorCall(
@@ -335,6 +364,10 @@ class ConstructorCall(
             println("\t".repeat(nestingLevel + 1) + "Encadenado:")
             it.printSubAST(nestingLevel + 1)
         }
+    }
+
+    override fun generateCode() {
+        TODO("Not yet implemented")
     }
 
     override fun check(expectedType: String?): String {
@@ -391,6 +424,10 @@ class StaticMethodCall(
             println("\t".repeat(nestingLevel + 1) + "Encadenado:")
             it.printSubAST(nestingLevel + 1)
         }
+    }
+
+    override fun generateCode() {
+        TODO("Not yet implemented")
     }
 
     override fun check(expectedType: String?): String {

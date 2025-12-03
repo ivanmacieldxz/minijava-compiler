@@ -1,10 +1,12 @@
 package semanticanalizer
 
+import fileWriter
 import semanticanalizer.stmember.Class
 import semanticanalizer.stmember.Declarable
 import semanticanalizer.stmember.DummyClass
 import semanticanalizer.stmember.DummyContext
 import semanticanalizer.stmember.FormalArgument
+import semanticanalizer.stmember.Method
 import semanticanalizer.stmember.Object
 import semanticanalizer.stmember.StringClass
 import semanticanalizer.stmember.System
@@ -26,6 +28,8 @@ class SymbolTable {
     var currentClass: Class = DummyClass
     var currentContext: Declarable = DummyContext
     val accumulator = Accumulator()
+
+    lateinit var mainMethod: Method
 
     class Accumulator {
         var className: Token = DummyToken
@@ -70,14 +74,44 @@ class SymbolTable {
     }
 
     fun checkSentences() {
+        var foundMain = false
+
         classMap.values.forEach { cls ->
             cls.constructor.block?.check()
 
             cls.methodMap.values.forEach {
+                if (foundMain.not()) {
+                    foundMain = it.token.lexeme == "main" && it.modifier.lexeme == "static"
+                    mainMethod = it
+                } else if (it.token.lexeme == "main" && it.modifier.lexeme == "static")
+                    throw object : SemanticException(
+                        "Solo se admite un método main por archivo MiniJava.",
+                        DummyToken
+                    ){}
+
                 if (cls.owns(it)) {
                     it.block?.check()
                 }
             }
+        }
+
+        if (foundMain.not())
+            throw object : SemanticException("No se encontró método main.", DummyToken) {}
+
+    }
+
+    fun generateCode() {
+        fileWriter.writeCodeSectionHeader()
+        fileWriter.writePush(mainMethod.getCodeLabel())
+        fileWriter.writeCall()
+        fileWriter.writeHalt()
+
+        fileWriter.writeAuxRoutines()
+
+        classMap.values.forEach {
+
+            it.generateCode()
+
         }
     }
 

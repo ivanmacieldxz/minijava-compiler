@@ -42,6 +42,10 @@ class BinaryExpression(
         rightExpression.printSubAST(nestingLevel + 1)
     }
 
+    override fun generateCode() {
+        TODO("Not yet implemented")
+    }
+
     override fun check(type: String?): String {
         val leftType = leftExpression.check(null)
 
@@ -106,6 +110,11 @@ class BasicExpression(
 
         operator?.let { println("\t".repeat(nestingLevel) + "Operador unario: $operator") }
         operand.printSubAST(nestingLevel + 1)
+    }
+
+    override fun generateCode() {
+        //TODO: considerar el oeprador para la generación de código
+        operand.generateCode()
     }
 
     override fun check(type: String?): String? {

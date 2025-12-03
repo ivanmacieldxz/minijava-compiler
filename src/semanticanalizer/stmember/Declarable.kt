@@ -9,17 +9,17 @@ interface Declarable {
     var token: Token
     var declarationCompleted: Boolean
 
-    fun isWellDeclared()
+    fun isWellDeclared(){}
     fun isDummyClass() = this == DummyClass
     fun isDummyContext() = this == DummyContext
+
+    fun generateCode(){}
 
 }
 
 object DummyContext: Declarable {
     override var token: Token = DummyToken
     override var declarationCompleted = true
-
-    override fun isWellDeclared() {}
 }
 
 interface Modifiable: Declarable {
@@ -30,7 +30,7 @@ interface ClassMember: Declarable {
     val parentClass: Class
 }
 
-interface Callable: Declarable{
+interface Callable: Declarable, ClassMember {
     var paramMap: MutableMap<String, FormalArgument>
     var block: Block?
 
@@ -41,6 +41,8 @@ interface Callable: Declarable{
     fun printSubAST() {
         block?.printSubAST(2)
     }
+
+    fun getCodeLabel() = "${token.lexeme}@${parentClass.token.lexeme}"
 }
 
 interface Typed {
