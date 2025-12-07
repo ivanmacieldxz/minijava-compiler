@@ -26,7 +26,8 @@ fun main(args: Array<String>) {
 
 
     try {
-        sourceManager.open("resources/sinErrores/${args[0]}")
+        //sourceManager.open("resources/sinErrores/${args[0]}")
+        sourceManager.open(args[0])
         parser.start()
 
         symbolTable.checkDeclarations()
@@ -34,8 +35,18 @@ fun main(args: Array<String>) {
 
         symbolTable.checkSentences()
 
-        fileWriter.createFile("resources/out/${args[1]}")
-        symbolTable.generateCode()
+        //fileWriter.createFile("resources/out/${args[1]}")
+        //symbolTable.generateCode()
+
+        symbolTable.classMap.values.forEach {
+            println("Atributos de instancia de ${it.token.lexeme}:")
+
+            it.attributeMap.values.forEach { attrSet ->
+                attrSet.forEach {
+                    println("\tNombre: ${it.token.lexeme}, clase de origen: ${it.parentClass.token.lexeme}")
+                }
+            }
+        }
 
 
 
@@ -46,6 +57,7 @@ fun main(args: Array<String>) {
         print(e)
         wereErrors = true
     } catch (e: SemanticException) {
+        e.printStackTrace()
         print(e)
         wereErrors = true
     } finally {

@@ -46,7 +46,7 @@ class ExpressionInvalidAsSingleSentenceException(
 
 class InvalidChainingException(
     token: Token
-): SemanticException("No se puede acceder a un miembro de un tipo primitivo o void.", token)
+): SemanticException("No se puede acceder a un miembro de una referencia nula, o de un tipo primitivo o void.", token)
 
 class TypeMismatchException(
     token: Token,

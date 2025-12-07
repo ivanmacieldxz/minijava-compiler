@@ -75,32 +75,48 @@ class CodeFileGeneratorImpl: CodeFileGenerator {
         write("FMEM $num")
     }
 
-    override fun writeStore(num: Int) {
-        write("STORE $num")
+    override fun writeStore(offset: Int) {
+        write("STORE $offset")
     }
 
-    override fun writeLoad(num: Int) {
-        write("LOAD $num")
+    override fun writeLoad(offset: Int) {
+        write("LOAD $offset")
     }
 
-    override fun writeStoreFP(num: Int) {
-        write("STOREFP $num")
+    override fun writeStoreFP(offset: Int) {
+        write("STOREFP $offset")
     }
 
-    override fun writeLoadFP(num: Int) {
-        write("LOADFP $num")
+    override fun writeLoadFP(offset: Int) {
+        write("LOADFP $offset")
     }
 
-    override fun writeStoreSP(num: Int) {
-        write("STORESP $num")
+    override fun writeStoreSP(offset: Int) {
+        write("STORESP $offset")
     }
 
-    override fun writeLoadSP(num: Int) {
-        write("LOADSP $num")
+    override fun writeLoadSP(offset: Int) {
+        write("LOADSP $offset")
     }
 
     override fun writeRet(num: Int) {
         write("RET $num")
+    }
+
+    override fun writeLoadRef(offset: Int) {
+        write("LOADREF $offset")
+    }
+
+    override fun writeStoreRef(offset: Int) {
+        write("STOREREF $offset")
+    }
+
+    override fun writeRMEM(locations: Int) {
+        write("RMEM $locations")
+    }
+
+    override fun writeDW(label: String, string: String) {
+        write("$label: $string, 0")
     }
 
 }

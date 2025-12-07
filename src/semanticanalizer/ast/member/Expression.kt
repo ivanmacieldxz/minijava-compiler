@@ -7,8 +7,10 @@ val primitiveTypesSet = setOf("int", "boolean", "char")
 
 interface Expression: ASTMember {
     var parentNode: ASTMember
+    var type: String?
 
     fun check(type: String?): String?
+    fun generateCodeAsParams()
 }
 
 class BinaryExpression(
@@ -17,6 +19,8 @@ class BinaryExpression(
     var operator: Token
 ): Expression {
     lateinit var rightExpression: Expression
+
+    override var type: String? = null
 
     companion object {
         private val logicOperators = setOf("||", "&&")
@@ -42,10 +46,6 @@ class BinaryExpression(
         rightExpression.printSubAST(nestingLevel + 1)
     }
 
-    override fun generateCode() {
-        TODO("Not yet implemented")
-    }
-
     override fun check(type: String?): String {
         val leftType = leftExpression.check(null)
 
@@ -68,11 +68,19 @@ class BinaryExpression(
 
         checkCompatibleExpressionTypes(leftType, rightType, operator)
 
-        val expType = resultingPrimitiveType(leftType, operator.lexeme)
+        this.type = resultingPrimitiveType(leftType, operator.lexeme)
 
-        checkCompatibleTypes(type, expType, operator)
+        checkCompatibleTypes(type, this.type, operator)
 
-        return expType
+        return this.type!!
+    }
+
+    override fun generateCode() {
+        TODO("Not yet implemented")
+    }
+
+    override fun generateCodeAsParams() {
+        TODO("Not yet implemented")
     }
 
     private fun resultingPrimitiveType(left: String?, operator: String) =
@@ -97,6 +105,8 @@ class BasicExpression(
     var operator: Token? = null
     lateinit var operand: Operand
 
+    override var type: String? = null
+
     override fun printItselfAndChildren(nestingLevel: Int) {
         print("\t".repeat(nestingLevel) + this)
     }
@@ -112,15 +122,10 @@ class BasicExpression(
         operand.printSubAST(nestingLevel + 1)
     }
 
-    override fun generateCode() {
-        //TODO: considerar el oeprador para la generación de código
-        operand.generateCode()
-    }
-
     override fun check(type: String?): String? {
         val operandType = operand.check(type)
 
-        return operator?.let {
+        this.type = operator?.let {
 
             if (operand is Primary) {
                 var endOfChaining = operand as Primary
@@ -139,6 +144,17 @@ class BasicExpression(
 
             resultingType(operandType, it)
         } ?: operandType
+
+        return this.type
+    }
+
+    override fun generateCode() {
+        //TODO: considerar el oeprador para la generación de código
+        operand.generateCode()
+    }
+
+    override fun generateCodeAsParams() {
+        TODO("Not yet implemented")
     }
 
     private fun resultingType(operandType: String?, operator: Token) =

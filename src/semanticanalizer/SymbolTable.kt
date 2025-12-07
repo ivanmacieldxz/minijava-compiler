@@ -31,6 +31,8 @@ class SymbolTable {
 
     lateinit var mainMethod: Method
 
+    var strLiteralsCount = 0
+
     class Accumulator {
         var className: Token = DummyToken
         var classParent: Token = Object.token

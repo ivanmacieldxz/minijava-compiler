@@ -1,17 +1,23 @@
 package test;
 
 class Test {
-    static void m1(Test p1) {
-        p1.m3();
-
-        //System.out.println(null == 1);
-    }
-    static void m3() {
-
-    }
+    String x = "en Test";
 }
 class Test2 extends Test {
-    static void m1(Test p1) {
-        p1.m3();
+    String x = "en Test 2";
+}
+
+class Test3 extends Test2 {
+    public void testX() {
+        System.out.println("Accediendo como x: " + x);
+        System.out.println("Accediendo como super.x: " + super.x);
+    }
+}
+
+class Main {
+    public static void main(String[] args) {
+        Test3 x = new Test3();
+
+        x.testX();
     }
 }

@@ -1,5 +1,8 @@
 ///[SinErrores]
-class A{
+class X {
+    int a1;
+}
+class A extends X {
     int a1;
     B a2;
     void m1(int p1){
@@ -11,6 +14,7 @@ class A{
 }
 class B extends A{
     int b1;
+    int a1;
     void m3(){
         a1 = 20;
     }
