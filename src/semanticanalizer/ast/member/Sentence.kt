@@ -70,10 +70,14 @@ open class Block(
     }
 
     override fun generateCode() {
-        //TODO: reserva de espacio para variables locales
+        visibleVariablesMap.size.takeIf { it != 0 }?.let {
+            fileWriter.writeRMEM(visibleVariablesMap.size)
+        }
 
         childrenList.forEach {
             it.generateCode()
+            //TODO: manejar la liberación de espacio cuando la sentencia sea una expresión
+            // en los casos que corresponda
         }
 
         fileWriter.writeFreeLocalVars(visibleVariablesMap.size)

@@ -10,7 +10,7 @@ interface Expression: ASTMember {
     var type: String?
 
     fun check(type: String?): String?
-    fun generateCodeAsParams()
+    fun generateCodeAsInstanceMetParams()
 }
 
 class BinaryExpression(
@@ -79,7 +79,7 @@ class BinaryExpression(
         TODO("Not yet implemented")
     }
 
-    override fun generateCodeAsParams() {
+    override fun generateCodeAsInstanceMetParams() {
         TODO("Not yet implemented")
     }
 
@@ -149,12 +149,15 @@ class BasicExpression(
     }
 
     override fun generateCode() {
-        //TODO: considerar el oeprador para la generación de código
-        operand.generateCode()
+        TODO("Not yet implemented")
+        //implementa la generación de la expresión teniendo en cuenta que son parámetros y no solo
+        //expresiones
     }
 
-    override fun generateCodeAsParams() {
+    override fun generateCodeAsInstanceMetParams() {
         TODO("Not yet implemented")
+        //implenta la generación de la expresión teniendo en cuenta que además de ser parámetros,
+        //son parámetros para un met de instancia, por lo que deben mover el this además del sp y fp
     }
 
     private fun resultingType(operandType: String?, operator: Token) =

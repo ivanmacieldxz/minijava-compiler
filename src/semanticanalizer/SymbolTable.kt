@@ -104,6 +104,10 @@ class SymbolTable {
 
     fun generateCode() {
         fileWriter.writeCodeSectionHeader()
+
+        fileWriter.writePush("simple_heap_init")
+        fileWriter.writeCall()
+
         fileWriter.writePush(mainMethod.getCodeLabel())
         fileWriter.writeCall()
         fileWriter.writeHalt()

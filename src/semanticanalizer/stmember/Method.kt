@@ -13,6 +13,7 @@ class Method(
     override var parentClass: Class
 ) : Modifiable, ClassMember, Callable, Typed {
 
+    var offsetInVTable: Int = -1
     override lateinit var token: Token
 
     override var declarationCompleted = false
@@ -49,31 +50,15 @@ class Method(
 
     override fun generateCode() {
 
-        //TODO: no estoy considerando parámetros (me parece que no tengo que considerarlos igual
-        // porque de eso se encarga el calee
-
-
-        when (modifier.type) {
-            TokenType.STATIC -> generateStaticMethodStackFrameCode()
-            DummyToken.type -> generateInstanceMethodStackFrameCode()
-            else -> {}
-        }
+        fileWriter.writeLabeledInstruction(getCodeLabel(), "LOADFP")
+        fileWriter.write("LOADSP")
+        fileWriter.write("STOREFP")
 
         block?.generateCode()
 
         fileWriter.write("STOREFP")
-        fileWriter.write("RET ${paramMap.size}")
+        fileWriter.writeRet(paramMap.size + 1)
 
-    }
-
-    private fun generateInstanceMethodStackFrameCode() {
-
-    }
-
-    private fun generateStaticMethodStackFrameCode() {
-        fileWriter.writeLabeledInstruction(getCodeLabel(), "LOADFP")
-        fileWriter.write("LOADSP")
-        fileWriter.write("STOREFP")
     }
 
     fun equals(other: Method): Boolean {

@@ -31,9 +31,21 @@ class Constructor(
         fileWriter.writeLabeledInstruction(getCodeLabel(), "LOADFP")
         fileWriter.write("LOADSP")
         fileWriter.write("STOREFP")
-        fileWriter.write("FMEM ${paramMap.size}")
+
+        //TODO: no estoy considerando que si bien un constructor puede ser por defecto,
+        //igual tiene que hacer las cosas que hace el constructor padre
+        //SIEMPRE debe hacer las cosas que hace el constructor padre
+        //TODO: esto no importa a menos que haga el logro de atributos inicializados me parece
+        // en tal caso, se puede resolver haciendo que durante la consolidación, se le asigne el bloque
+        // del padre como bloque
+        // y en caso de que no sea el por defecto, que el bloque del constructor padre
+        // sea la primera sentencia dentro del bloque del constructor hijo
+        block?.generateCode() ?: {
+            fileWriter.writeFreeLocalVars(0)
+        }
+
         fileWriter.write("STOREFP")
-        fileWriter.write("RET 1")
+        fileWriter.writeRet(paramMap.size + 1)
     }
 
     override fun getCodeLabel(): String = "constructor@${parentClass.token.lexeme}"

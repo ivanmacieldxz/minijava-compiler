@@ -265,18 +265,20 @@ class VariableAccess(
                 containerCallable.paramMap[token.lexeme]!!.typeToken.lexeme
             }
             else -> {
-                val flattenedAttributeMap = containerClass.attributeMap.flatMap {it.value}
                 val matchingNameAttributeSet = containerClass.attributeMap[token.lexeme]!!
 
                 //obtener el que sea de esta clase o la última redefinición del atributo del mismo nombre
                 val attribute = matchingNameAttributeSet.firstOrNull {
                     it.parentClass == containerClass
-                } ?: matchingNameAttributeSet.last()
+                } ?: matchingNameAttributeSet.first()
 
-                val position = flattenedAttributeMap.indexOf(attribute)
+                val offset = attribute.offsetInCIR.takeIf { it != -1 } ?: {
+                    attribute.parentClass.calculateAttributeOffsets()
+                    attribute.offsetInCIR
+                }()
 
                 fileWriter.writeLoad(3)
-                fileWriter.writeLoadRef(position)
+                fileWriter.writeLoadRef(offset)
 
                 attribute.typeToken.lexeme
             }
@@ -289,10 +291,17 @@ class VariableAccess(
         //la diferencia acá es que no tiene que cargar this porque la referencia ya está puesta, solo tiene que
         //hacer el loadRef y generar el encadenado
         val ownerClass = symbolTable.classMap[receiverType]
-        val attribute = ownerClass!!.attributeMap[token.lexeme]!!.last()
 
+        //obtener el que sea de esta clase o la última redefinición del atributo del mismo nombre
+        val attribute = ownerClass!!.attributeMap[token.lexeme]!!.first()
 
-        fileWriter.writeLoadRef(1)
+        //obtener el offset, calculándolo primero de ser necesario
+        val offset = attribute.offsetInCIR.takeIf { it != -1 } ?: {
+            attribute.parentClass.calculateAttributeOffsets()
+            attribute.offsetInCIR
+        }()
+
+        fileWriter.writeLoadRef(offset)
     }
 }
 
@@ -407,10 +416,15 @@ class MethodCall(
     override fun generateCode() {
         val calledMethod = containerClass.methodMap[token.lexeme]!!
 
+        if (calledMethod.typeToken.type != TokenType.VOID) {
+            fileWriter.writeRMEM(1)
+            fileWriter.writeSwap()
+        }
+
         if (calledMethod.modifier.type == TokenType.STATIC)
             arguments.forEach { it.generateCode() }
         else
-            arguments.forEach { it.generateCodeAsParams() }
+            arguments.forEach { it.generateCodeAsInstanceMetParams() }
 
         fileWriter.writePush(calledMethod.getCodeLabel())
         fileWriter.writeCall()
@@ -419,16 +433,36 @@ class MethodCall(
     }
 
     override fun generateAsChained(receiverType: String) {
-        TODO("Not yet implemented")
-        //acordate que si lo recibís como encadenado, la implementación del método no la podés determinar
+        //acordate que si lo recibís como encadenado, la implementación del mét no la podés determinar
         //a partir del tipo del parámetro, porque puede ser que el tipo dinámico no coincida con el tipo estático
 
         //considerá que igual, aunque se reciba como encadenado, si es estático, se lo llama directamente
-        //con la label asociada al método, porque en este caso sí o sí es de la clase, al no haber
+        //con la label asociada al mét, porque en este caso sí o sí es de la clase, al no haber
         //redefinición de estáticos
 
+        val calledMethod = symbolTable.classMap[receiverType]!!.methodMap[token.lexeme]!!
 
-        chained?.generateAsChained(TODO())
+        if (calledMethod.typeToken.type != TokenType.VOID) {
+            fileWriter.writeRMEM(1)
+            fileWriter.writeSwap()
+        }
+        if (calledMethod.modifier.type == TokenType.STATIC) {
+            arguments.forEach { it.generateCode() }
+
+            fileWriter.writePush(calledMethod.getCodeLabel())
+        } else {
+            arguments.forEach { it.generateCodeAsInstanceMetParams() }
+
+            fileWriter.writeDup()
+            //acá tengo que acceder desde la vtable porque no sé si la implementación que es accesible desde el
+            //tipo de la variable es la misma que la del tipo dinámico
+            fileWriter.writeLoadRef(0)
+            fileWriter.writeLoadRef(calledMethod.offsetInVTable)
+        }
+
+        fileWriter.writeCall()
+
+        chained?.generateAsChained(calledMethod.typeToken.lexeme)
     }
 }
 
@@ -502,12 +536,12 @@ class ConstructorCall(
         //vuelvo a duplicar la referencia al cir
         fileWriter.write("DUP")
 
-        arguments.forEach { it.generateCodeAsParams() }
+        arguments.forEach { it.generateCodeAsInstanceMetParams() }
 
         fileWriter.writePush(calledConstructor.getCodeLabel())
         fileWriter.writeCall()
 
-        chained?.generateAsChained(TODO())
+        chained?.generateAsChained(token.lexeme)
     }
 }
 
@@ -583,12 +617,17 @@ class StaticMethodCall(
     override fun generateCode() {
         val calledMethod = symbolTable.classMap[token.lexeme]!!.methodMap[calledMethodToken.lexeme]!!
 
+        if (calledMethod.typeToken.type != TokenType.VOID) {
+            fileWriter.writeRMEM(1)
+            fileWriter.writeSwap()
+        }
+
         arguments.forEach { it.generateCode()}
 
         fileWriter.writePush(calledMethod.getCodeLabel())
         fileWriter.writeCall()
 
-        chained?.generateAsChained(TODO())
+        chained?.generateAsChained(calledMethod.typeToken.lexeme )
     }
 }
 

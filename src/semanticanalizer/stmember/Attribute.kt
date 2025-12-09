@@ -13,6 +13,8 @@ class Attribute(
     override var typeToken: Token = DummyToken
     override var declarationCompleted = false
 
+    var offsetInCIR: Int = 0
+
     override fun toString(): String {
         return "$typeToken $token"
     }
