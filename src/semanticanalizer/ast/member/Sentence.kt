@@ -5,8 +5,13 @@ import semanticanalizer.ast.ASTMember
 import semanticanalizer.stmember.Callable
 import semanticanalizer.stmember.Constructor
 import semanticanalizer.stmember.Method
+import symbolTable
 import utils.Token
 import utils.TokenType
+import kotlin.collections.contains
+import kotlin.collections.first
+import kotlin.collections.firstOrNull
+import kotlin.collections.indexOf
 
 interface Sentence: ASTMember {
 
@@ -393,7 +398,90 @@ class Assignment(
     }
 
     override fun generateCode() {
-        TODO("Not yet implemented")
+        val baseAccess = (leftExpression as BasicExpression).operand as VariableAccess
+
+        val containerBlock = {
+            var sentencePointer = parentSentence!!
+
+            while (sentencePointer !is Block) {
+                sentencePointer = sentencePointer.parentSentence!!
+            }
+
+            sentencePointer
+        }()
+
+        val containerCallable = containerBlock.parentMember
+        val containerClass = containerCallable.parentClass
+
+        rightExpression.generateCode()
+
+        var receiverType: String
+
+        if (baseAccess.chained == null) {
+            when (token.lexeme) {
+                in containerBlock.visibleVariablesMap -> {
+                    val position = -containerBlock.visibleVariablesMap.keys.indexOf(token.lexeme)
+
+                    fileWriter.writeStore(position)
+                }
+
+                in containerCallable.paramMap -> {
+                    val stackRecordOffset = (containerCallable as? Method)?.let {
+                        if (it.modifier.type == TokenType.STATIC) 2
+                        else 3
+                    } ?: 3
+
+                    val position = containerCallable.paramMap.keys.indexOf(token.lexeme) + stackRecordOffset + 1
+
+                    fileWriter.writeStore(position)
+                }
+
+                else -> {
+                    val matchingNameAttributeSet = containerClass.attributeMap[token.lexeme]!!
+
+                    //obtener el que sea de esta clase o la última redefinición del atributo del mismo nombre
+                    val attribute = matchingNameAttributeSet.firstOrNull {
+                        it.parentClass == containerClass
+                    } ?: matchingNameAttributeSet.first()
+
+                    val offset = attribute.offsetInCIR
+
+                    fileWriter.writeLoad(3)
+                    fileWriter.writeSwap()
+                    fileWriter.writeStoreRef(offset)
+                }
+            }
+        } else {
+
+            //carga normal
+            receiverType = baseAccess.generateCodeWithoutChained()
+
+            //iteracion sobre encadenado
+            var access = baseAccess.chained!!
+
+            while (access.chained != null) {
+                receiverType = baseAccess.generateCodeWithoutChained()
+
+                access = access.chained!!
+            }
+
+            val matchingNameAttributeSet = symbolTable.classMap[receiverType]!!.attributeMap[token.lexeme]!!
+
+            //obtener el que sea de esta clase o la última redefinición del atributo del mismo nombre
+            val attribute = matchingNameAttributeSet.first()
+
+            val offset = attribute.offsetInCIR
+
+            fileWriter.writeLoad(3)
+            fileWriter.writeStoreRef(offset)
+
+            attribute.typeToken.lexeme
+
+        }
+
+
+
+
     }
 
     override fun check() {

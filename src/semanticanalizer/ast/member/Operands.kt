@@ -244,7 +244,13 @@ class VariableAccess(
     }
 
     override fun generateCode() {
-        val receiverType = when (token.lexeme) {
+        val receiverType = generateCodeWithoutChained()
+
+        chained?.generateAsChained(receiverType)
+    }
+
+    internal fun generateCodeWithoutChained() =
+        when (token.lexeme) {
             in containerBlock.visibleVariablesMap -> {
                 val position = -containerBlock.visibleVariablesMap.keys.indexOf(token.lexeme)
 
@@ -268,9 +274,7 @@ class VariableAccess(
                 val matchingNameAttributeSet = containerClass.attributeMap[token.lexeme]!!
 
                 //obtener el que sea de esta clase o la última redefinición del atributo del mismo nombre
-                val attribute = matchingNameAttributeSet.firstOrNull {
-                    it.parentClass == containerClass
-                } ?: matchingNameAttributeSet.first()
+                val attribute = matchingNameAttributeSet.first()
 
                 val offset = attribute.offsetInCIR
 
@@ -281,8 +285,6 @@ class VariableAccess(
             }
         }
 
-        chained?.generateAsChained(receiverType)
-    }
 
     override fun generateAsChained(receiverType: String) {
         //la diferencia acá es que no tiene que cargar this porque la referencia ya está puesta, solo tiene que
