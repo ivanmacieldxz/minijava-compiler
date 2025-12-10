@@ -265,6 +265,9 @@ open class Class() : Modifiable {
     }
 
     override fun generateCode() {
+        calculateMethodOffsets()
+        calculateAttributeOffsets()
+
         val nonStaticMethodsList = methodMap.values.filter { it.modifier.type == STATIC }
 
         //vtable
@@ -288,7 +291,6 @@ open class Class() : Modifiable {
             met.takeIf { this.owns(met) }?.generateCode()
         }
 
-        //TODO: generación de constructores
         constructor.generateCode()
 
         fileWriter.write("")

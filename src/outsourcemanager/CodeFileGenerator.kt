@@ -68,20 +68,20 @@ interface CodeFileGenerator {
         write("LOAD $offset")
     }
 
-    fun writeStoreFP(offset: Int) {
-        write("STOREFP $offset")
+    fun writeStoreFP() {
+        write("STOREFP")
     }
 
-    fun writeLoadFP(offset: Int) {
-        write("LOADFP $offset")
+    fun writeLoadFP() {
+        write("LOADFP")
     }
 
-    fun writeStoreSP(offset: Int) {
-        write("STORESP $offset")
+    fun writeStoreSP() {
+        write("STORESP")
     }
 
-    fun writeLoadSP(offset: Int) {
-        write("LOADSP $offset")
+    fun writeLoadSP() {
+        write("LOADSP")
     }
 
     fun writeRet(num: Int) {
@@ -110,5 +110,9 @@ interface CodeFileGenerator {
 
     fun writeDup() {
         write("DUP")
+    }
+
+    fun writePop() {
+        write("POP")
     }
 }

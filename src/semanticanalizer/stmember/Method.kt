@@ -51,12 +51,12 @@ class Method(
     override fun generateCode() {
 
         fileWriter.writeLabeledInstruction(getCodeLabel(), "LOADFP")
-        fileWriter.write("LOADSP")
-        fileWriter.write("STOREFP")
+        fileWriter.writeLoadSP()
+        fileWriter.writeStoreFP()
 
         block?.generateCode()
 
-        fileWriter.write("STOREFP")
+        fileWriter.writeStoreFP()
         fileWriter.writeRet(paramMap.size + 1)
 
     }

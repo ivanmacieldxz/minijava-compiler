@@ -272,10 +272,7 @@ class VariableAccess(
                     it.parentClass == containerClass
                 } ?: matchingNameAttributeSet.first()
 
-                val offset = attribute.offsetInCIR.takeIf { it != -1 } ?: {
-                    attribute.parentClass.calculateAttributeOffsets()
-                    attribute.offsetInCIR
-                }()
+                val offset = attribute.offsetInCIR
 
                 fileWriter.writeLoad(3)
                 fileWriter.writeLoadRef(offset)
@@ -295,11 +292,7 @@ class VariableAccess(
         //obtener el que sea de esta clase o la última redefinición del atributo del mismo nombre
         val attribute = ownerClass!!.attributeMap[token.lexeme]!!.first()
 
-        //obtener el offset, calculándolo primero de ser necesario
-        val offset = attribute.offsetInCIR.takeIf { it != -1 } ?: {
-            attribute.parentClass.calculateAttributeOffsets()
-            attribute.offsetInCIR
-        }()
+        val offset = attribute.offsetInCIR
 
         fileWriter.writeLoadRef(offset)
     }
@@ -522,7 +515,7 @@ class ConstructorCall(
     override fun generateCode() {
         val constructorClass = symbolTable.classMap[token.lexeme]!!
         val calledConstructor = constructorClass.constructor
-        val cirSize = constructorClass.attributeMap.size + constructorClass.methodMap.size + 1
+        val cirSize = constructorClass.attributeMap.size + 1
 
         //this
         fileWriter.writeRMEM(1)

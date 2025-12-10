@@ -29,8 +29,8 @@ class Constructor(
 
     override fun generateCode() {
         fileWriter.writeLabeledInstruction(getCodeLabel(), "LOADFP")
-        fileWriter.write("LOADSP")
-        fileWriter.write("STOREFP")
+        fileWriter.writeLoadSP()
+        fileWriter.writeStoreFP()
 
         //TODO: no estoy considerando que si bien un constructor puede ser por defecto,
         //igual tiene que hacer las cosas que hace el constructor padre
@@ -44,7 +44,7 @@ class Constructor(
             fileWriter.writeFreeLocalVars(0)
         }
 
-        fileWriter.write("STOREFP")
+        fileWriter.writeStoreFP()
         fileWriter.writeRet(paramMap.size + 1)
     }
 
