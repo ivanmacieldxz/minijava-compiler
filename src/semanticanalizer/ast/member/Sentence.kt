@@ -76,8 +76,9 @@ open class Block(
 
         childrenList.forEach {
             it.generateCode()
-            //TODO: manejar la liberación de espacio cuando la sentencia sea una expresión
-            // en los casos que corresponda
+
+            if (it is Expression && it.type != "void")
+                fileWriter.writePop()
         }
 
         fileWriter.writeFreeLocalVars(visibleVariablesMap.size)
@@ -115,7 +116,22 @@ class If(
     }
 
     override fun generateCode() {
-        TODO("Not yet implemented")
+        condition!!.generateCode()
+
+        val ifIdentityHashCode = System.identityHashCode(this)
+        val endThenLabel = "endThen@$ifIdentityHashCode"
+        val endIfLabel = "endIf@$ifIdentityHashCode"
+
+        fileWriter.write("BF $endThenLabel")
+        body!!.generateCode()
+        fileWriter.writeLabeledInstruction(endThenLabel, "NOP")
+
+        elseSentence?.let {
+            fileWriter.write("JUMP $endIfLabel")
+            it.generateCode()
+            fileWriter.writeLabeledInstruction(endIfLabel, "NOP")
+        }
+
     }
 
     override fun check() {
@@ -160,7 +176,7 @@ class Else(
     }
 
     override fun generateCode() {
-        TODO("Not yet implemented")
+        body!!.generateCode()
     }
 
     override fun check() {
@@ -205,7 +221,17 @@ class While(
     }
 
     override fun generateCode() {
-        TODO("Not yet implemented")
+        val whileIdentityHashCode = System.identityHashCode(this)
+        val startLabel = "whileStart@$whileIdentityHashCode"
+        val endLabel = "endWhile@$whileIdentityHashCode"
+
+        fileWriter.writeLabeledInstruction(startLabel, "NOP")
+        condition!!.generateCode()
+        fileWriter.write("BF $endLabel")
+        body!!.generateCode()
+        fileWriter.write("JUMP $startLabel")
+        fileWriter.writeLabeledInstruction(endLabel, "NOP")
+
     }
 
     override fun check() {
@@ -245,10 +271,6 @@ class Return(
         body?.printSubAST(nestingLevel + 1)
     }
 
-    override fun generateCode() {
-        TODO("Not yet implemented")
-    }
-
     override fun check() {
         when (val parent = parentMember) {
             is Method -> {
@@ -271,6 +293,29 @@ class Return(
             }
         }
     }
+
+    override fun generateCode() {
+        var ownerBlock: Block?
+        var sentencePointer = parentSentence!!
+
+        while (sentencePointer !is Block) {
+            sentencePointer = sentencePointer.parentSentence!!
+        }
+
+        ownerBlock = sentencePointer
+
+        fileWriter.writeFreeLocalVars(ownerBlock.visibleVariablesMap.size)
+
+        body?.let{
+            it.generateCode()
+            if (parentMember is Constructor || (parentMember as Method).typeToken.type != TokenType.VOID)
+                fileWriter.writeStore(3 + parentMember.paramMap.size + 1)
+        }
+
+        fileWriter.writeStoreFP()
+        fileWriter.writeRet(parentMember.paramMap.size + 1)
+
+    }
 }
 
 class LocalVar(
@@ -292,10 +337,6 @@ class LocalVar(
         expression.printSubAST(nestingLevel + 1)
     }
 
-    override fun generateCode() {
-        TODO("Not yet implemented")
-    }
-
     override fun check() {
         type = expression.check(null)
             ?: throw InvalidVarInitializationException(
@@ -308,6 +349,24 @@ class LocalVar(
                 token,
                 "La expresión del lado derecho de la declaración no devuelve un valor."
             )
+    }
+
+    override fun generateCode() {
+        var ownerBlock: Block?
+        var sentencePointer = parentSentence!!
+
+        while (sentencePointer !is Block) {
+            sentencePointer = sentencePointer.parentSentence!!
+        }
+
+        ownerBlock = sentencePointer
+
+        expression.generateCode()
+
+        val index = ownerBlock.visibleVariablesMap.values.indexOf(this)
+
+        fileWriter.writeStore(index)
+
     }
 
 }
