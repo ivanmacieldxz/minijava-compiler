@@ -77,7 +77,7 @@ public class TesterDeCasosSinErrores {
         init.main(args);
         String result ="";
         try {
-            Process proc = Runtime.getRuntime().exec("java -jar CeIVM-cei2011.jar " + generatedFileName);
+            Process proc = Runtime.getRuntime().exec("java -jar CeIVM-cei2011.jar " + generatedFileName + " -v");
             result = new BufferedReader(new InputStreamReader(proc.getInputStream())).lines().collect(Collectors.joining("\n"));
             result += new BufferedReader(new InputStreamReader(proc.getErrorStream())).lines().collect(Collectors.joining("\n"));
             result += "\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n";

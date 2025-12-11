@@ -381,7 +381,7 @@ class LocalVar(
 
         expression.generateCode()
 
-        val index = ownerBlock.visibleVariablesMap.values.indexOf(this)
+        val index = -ownerBlock.visibleVariablesMap.values.indexOf(this)
 
         fileWriter.writeStore(index)
 

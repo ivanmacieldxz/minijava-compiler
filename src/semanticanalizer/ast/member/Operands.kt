@@ -265,6 +265,8 @@ class VariableAccess(
                 } ?: 3
 
                 val position = containerCallable.paramMap.keys.indexOf(token.lexeme) + stackRecordOffset + 1
+//                val position = (containerCallable.paramMap.size - containerCallable.paramMap.keys.indexOf(token.lexeme))
+//                + stackRecordOffset + 1
 
                 fileWriter.writeLoad(position)
 
@@ -416,9 +418,9 @@ class MethodCall(
         }
 
         if (calledMethod.modifier.type == TokenType.STATIC)
-            arguments.forEach { it.generateCode() }
+            arguments.reversed().forEach { it.generateCode() }
         else
-            arguments.forEach { it.generateCodeAsInstanceMetParams() }
+            arguments.reversed().forEach { it.generateCodeAsInstanceMetParams() }
 
         fileWriter.writePush(calledMethod.getCodeLabel())
         fileWriter.writeCall()
@@ -441,11 +443,11 @@ class MethodCall(
             fileWriter.writeSwap()
         }
         if (calledMethod.modifier.type == TokenType.STATIC) {
-            arguments.forEach { it.generateCode() }
+            arguments.reversed().forEach { it.generateCode() }
 
             fileWriter.writePush(calledMethod.getCodeLabel())
         } else {
-            arguments.forEach { it.generateCodeAsInstanceMetParams() }
+            arguments.reversed().forEach { it.generateCodeAsInstanceMetParams() }
 
             fileWriter.writeDup()
             //acá tengo que acceder desde la vtable porque no sé si la implementación que es accesible desde el
@@ -530,7 +532,7 @@ class ConstructorCall(
         //vuelvo a duplicar la referencia al cir
         fileWriter.write("DUP")
 
-        arguments.forEach { it.generateCodeAsInstanceMetParams() }
+        arguments.reversed().forEach { it.generateCodeAsInstanceMetParams() }
 
         fileWriter.writePush(calledConstructor.getCodeLabel())
         fileWriter.writeCall()
@@ -616,7 +618,7 @@ class StaticMethodCall(
             fileWriter.writeSwap()
         }
 
-        arguments.forEach { it.generateCode()}
+        arguments.reversed().forEach { it.generateCode()}
 
         fileWriter.writePush(calledMethod.getCodeLabel())
         fileWriter.writeCall()
