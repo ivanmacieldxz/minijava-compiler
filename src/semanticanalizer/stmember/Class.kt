@@ -264,8 +264,6 @@ open class Class() : Modifiable {
     }
 
     override fun generateCode() {
-        calculateMethodOffsets()
-        calculateAttributeOffsets()
 
         val nonStaticMethodsList = methodMap.values.filter { it.modifier.type != STATIC }
 
@@ -348,6 +346,8 @@ open class Class() : Modifiable {
             }.forEach {
                 it.offsetInVTable = it.parentClass.parentClass.methodMap[it.token.lexeme]?.offsetInVTable ?: ++initOffset
             }
+
+            methodOffsetsComputed = true
         }
     }
 }

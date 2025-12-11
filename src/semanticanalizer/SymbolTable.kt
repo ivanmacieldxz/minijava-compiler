@@ -115,6 +115,11 @@ class SymbolTable {
         fileWriter.writeAuxRoutines()
 
         classMap.values.forEach {
+            it.calculateAttributeOffsets()
+            it.calculateMethodOffsets()
+        }
+
+        classMap.values.forEach {
 
             it.generateCode()
 

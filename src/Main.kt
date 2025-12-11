@@ -38,10 +38,8 @@ fun main(args: Array<String>) {
         fileWriter.createFile(args[1])
         symbolTable.generateCode()
 
-//        symbolTable.classMap.values.forEach {
-//            it.calculateMethodOffsets()
-//            it.calculateAttributeOffsets()
-//
+        symbolTable.classMap.values.forEach {
+
 //            println("Ancestros de ${it.token.lexeme}: ${it.ancestors}")
 //            println()
 //
@@ -52,19 +50,19 @@ fun main(args: Array<String>) {
 //                    println("\tNombre: ${it.token.lexeme}, clase de origen: ${it.parentClass.token.lexeme}, offset en CIR: ${it.offsetInCIR}")
 //                }
 //            }
-//
-//            println()
-//
-//            println("Métodos de instancia de ${it.token.lexeme}:")
-//
-//            it.methodMap.values.filter {
-//                it.modifier.lexeme != "static"
-//            }.forEach {
-//                println("\tNombre: ${it.token.lexeme}, clase de origen: ${it.parentClass.token.lexeme}; offset en vtable: ${it.offsetInVTable}")
-//            }
-//
-//            println()
-//        }
+
+            println()
+
+            println("Métodos de instancia de ${it.token.lexeme}:")
+
+            it.methodMap.values.filter {
+                it.modifier.lexeme != "static"
+            }.forEach {
+                println("\tNombre: ${it.token.lexeme}, clase de origen: ${it.parentClass.token.lexeme}; offset en vtable: ${it.offsetInVTable}")
+            }
+
+            println()
+        }
 
 
 

@@ -265,8 +265,6 @@ class VariableAccess(
                 } ?: 3
 
                 val position = containerCallable.paramMap.keys.indexOf(token.lexeme) + stackRecordOffset + 1
-//                val position = (containerCallable.paramMap.size - containerCallable.paramMap.keys.indexOf(token.lexeme))
-//                + stackRecordOffset + 1
 
                 fileWriter.writeLoad(position)
 
@@ -452,7 +450,7 @@ class MethodCall(
             fileWriter.writeDup()
             //acá tengo que acceder desde la vtable porque no sé si la implementación que es accesible desde el
             //tipo de la variable es la misma que la del tipo dinámico
-            fileWriter.writeLoadRef(0)
+            fileWriter.writeLoadRef(0, "acceso a vtable")
             fileWriter.writeLoadRef(calledMethod.offsetInVTable, "${calledMethod.token}")
         }
 
