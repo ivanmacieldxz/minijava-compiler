@@ -56,8 +56,12 @@ class Method(
 
         block?.generateCode()
 
+        val returnSize = paramMap.size +
+                (1.takeIf { modifier.type != TokenType.STATIC }
+                    ?: 0)
+
         fileWriter.writeStoreFP()
-        fileWriter.writeRet(paramMap.size + 1)
+        fileWriter.writeRet(returnSize)
 
     }
 

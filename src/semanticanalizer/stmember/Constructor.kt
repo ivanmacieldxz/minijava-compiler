@@ -4,7 +4,6 @@ import fileWriter
 import semanticanalizer.ast.member.Block
 import utils.Token
 import utils.Token.DummyToken
-import java.io.FileWriter
 import java.util.Collections
 
 class Constructor(
@@ -42,7 +41,7 @@ class Constructor(
         // sea la primera sentencia dentro del bloque del constructor hijo
         block?.generateCode() ?: {
             fileWriter.writeFreeLocalVars(0)
-        }
+        }()
 
         fileWriter.writeStoreFP()
         fileWriter.writeRet(paramMap.size + 1)

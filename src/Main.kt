@@ -35,36 +35,36 @@ fun main(args: Array<String>) {
 
         symbolTable.checkSentences()
 
-        //fileWriter.createFile("resources/out/${args[1]}")
-        //symbolTable.generateCode()
+        fileWriter.createFile(args[1])
+        symbolTable.generateCode()
 
-        symbolTable.classMap.values.forEach {
-            it.calculateMethodOffsets()
-            it.calculateAttributeOffsets()
-
-            println("Ancestros de ${it.token.lexeme}: ${it.ancestors}")
-            println()
-
-            println("Atributos de instancia de ${it.token.lexeme}:")
-
-            it.attributeMap.values.forEach { attrSet ->
-                attrSet.forEach {
-                    println("\tNombre: ${it.token.lexeme}, clase de origen: ${it.parentClass.token.lexeme}, offset en CIR: ${it.offsetInCIR}")
-                }
-            }
-
-            println()
-
-            println("Métodos de instancia de ${it.token.lexeme}:")
-
-            it.methodMap.values.filter {
-                it.modifier.lexeme != "static"
-            }.forEach {
-                println("\tNombre: ${it.token.lexeme}, clase de origen: ${it.parentClass.token.lexeme}; offset en vtable: ${it.offsetInVTable}")
-            }
-
-            println()
-        }
+//        symbolTable.classMap.values.forEach {
+//            it.calculateMethodOffsets()
+//            it.calculateAttributeOffsets()
+//
+//            println("Ancestros de ${it.token.lexeme}: ${it.ancestors}")
+//            println()
+//
+//            println("Atributos de instancia de ${it.token.lexeme}:")
+//
+//            it.attributeMap.values.forEach { attrSet ->
+//                attrSet.forEach {
+//                    println("\tNombre: ${it.token.lexeme}, clase de origen: ${it.parentClass.token.lexeme}, offset en CIR: ${it.offsetInCIR}")
+//                }
+//            }
+//
+//            println()
+//
+//            println("Métodos de instancia de ${it.token.lexeme}:")
+//
+//            it.methodMap.values.filter {
+//                it.modifier.lexeme != "static"
+//            }.forEach {
+//                println("\tNombre: ${it.token.lexeme}, clase de origen: ${it.parentClass.token.lexeme}; offset en vtable: ${it.offsetInVTable}")
+//            }
+//
+//            println()
+//        }
 
 
 

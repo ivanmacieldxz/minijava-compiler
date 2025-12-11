@@ -1,7 +1,12 @@
 package semanticanalizer.ast.member
 
+import fileWriter
 import semanticanalizer.ast.ASTMember
+import semanticanalizer.stmember.Method
+import symbolTable
 import utils.Token
+import utils.TokenType
+import kotlin.collections.first
 
 val primitiveTypesSet = setOf("int", "boolean", "char")
 
@@ -76,11 +81,61 @@ class BinaryExpression(
     }
 
     override fun generateCode() {
-        TODO("Not yet implemented")
+        leftExpression.generateCode()
+        rightExpression.generateCode()
+
+        generateOperatorCode()
+
     }
 
     override fun generateCodeAsInstanceMetParams() {
-        TODO("Not yet implemented")
+        generateCode()
+
+        fileWriter.writeSwap()
+    }
+
+    private fun generateOperatorCode() {
+        when (operator.lexeme) {
+            "+" -> {
+                fileWriter.write("ADD")
+            }
+            "-" -> {
+                fileWriter.write("SUB")
+            }
+            "*" -> {
+                fileWriter.write("MUL")
+            }
+            "/" -> {
+                fileWriter.write("DIV")
+            }
+            "%" -> {
+                fileWriter.write("MOD")
+            }
+            "&&" -> {
+                fileWriter.write("AND")
+            }
+            "||" -> {
+                fileWriter.write("OR")
+            }
+            "==" -> {
+                fileWriter.write("EQ")
+            }
+            "!=" -> {
+                fileWriter.write("NE")
+            }
+            ">" -> {
+                fileWriter.write("GT")
+            }
+            "<" -> {
+                fileWriter.write("LT")
+            }
+            ">=" -> {
+                fileWriter.write("GE")
+            }
+            "<=" -> {
+                fileWriter.write("LE")
+            }
+        }
     }
 
     private fun resultingPrimitiveType(left: String?, operator: String) =
@@ -149,15 +204,151 @@ class BasicExpression(
     }
 
     override fun generateCode() {
-        TODO("Not yet implemented")
-        //implementa la generación de la expresión teniendo en cuenta que son parámetros y no solo
-        //expresiones
+
+        operator?.let {
+
+            val containerBlock = {
+                var sentencePointer = parentNode
+
+                while (sentencePointer !is Block) {
+                    sentencePointer = when (sentencePointer) {
+                        is Expression -> {
+                            sentencePointer.parentNode
+                        }
+                        else -> {
+                            (sentencePointer as Sentence).parentSentence!!
+                        }
+                    }
+                }
+
+                sentencePointer
+            }()
+
+            val containerCallable = containerBlock.parentMember
+            val containerClass = containerCallable.parentClass
+
+            operand.generateCode()
+
+            var receiverType: String
+            val baseAccess = operand as VariableAccess
+            var token = baseAccess.token
+
+            if (baseAccess.chained == null) {
+                when (token.lexeme) {
+                    in containerBlock.visibleVariablesMap -> {
+                        val position = -containerBlock.visibleVariablesMap.keys.indexOf(token.lexeme)
+
+                        fileWriter.writeLoad(position)
+
+                        writeUnaryOperator()
+
+                        fileWriter.writeStore(position)
+                    }
+
+                    in containerCallable.paramMap -> {
+                        val stackRecordOffset = (containerCallable as? Method)?.let {
+                            if (it.modifier.type == TokenType.STATIC) 2
+                            else 3
+                        } ?: 3
+
+                        val position = containerCallable.paramMap.keys.indexOf(token.lexeme) + stackRecordOffset + 1
+
+                        fileWriter.writeLoad(position)
+
+                        writeUnaryOperator()
+
+                        fileWriter.writeStore(position)
+                    }
+
+                    else -> {
+                        val matchingNameAttributeSet = containerClass.attributeMap[token.lexeme]!!
+
+                        //obtener el que sea de esta clase o la última redefinición del atributo del mismo nombre
+                        val attribute = matchingNameAttributeSet.firstOrNull {
+                            it.parentClass == containerClass
+                        } ?: matchingNameAttributeSet.first()
+
+                        val offset = attribute.offsetInCIR
+
+                        fileWriter.writeLoad(3)
+                        fileWriter.writeSwap()
+
+                        fileWriter.writeDup()
+                        fileWriter.writeLoadRef(offset)
+
+                        writeUnaryOperator()
+
+                        fileWriter.writeStoreRef(offset)
+                    }
+                }
+            } else {
+
+                //carga normal
+                receiverType = baseAccess.generateCodeWithoutChained()
+
+                //iteracion sobre encadenado
+                var access = baseAccess.chained!!
+
+                while (access.chained != null) {
+                    receiverType = baseAccess.generateCodeWithoutChained()
+
+                    access = access.chained!!
+                }
+
+                token = access.token
+
+                val matchingNameAttributeSet = symbolTable.classMap[receiverType]!!.attributeMap[token.lexeme]!!
+
+                //obtener el que sea de esta clase o la última redefinición del atributo del mismo nombre
+                val attribute = matchingNameAttributeSet.first()
+
+                val offset = attribute.offsetInCIR
+
+                fileWriter.writeLoad(3)
+                fileWriter.writeSwap()
+
+                fileWriter.writeDup()
+                fileWriter.writeLoadRef(offset)
+
+                writeUnaryOperator()
+
+                fileWriter.writeStoreRef(offset)
+            }
+
+            baseAccess.generateCode()
+
+        } ?: {
+            operand.generateCode()
+        }()
+
+    }
+
+    private fun writeUnaryOperator() {
+        //te quedaste en determinar qué apilar dependiendo del tipo de operador unario
+        //se te ocurrió que capaz se puede factorizar hacia afuera
+        when (operator!!.lexeme) {
+            "-" -> {
+                fileWriter.write("NEG")
+            }
+            "++" -> {
+                fileWriter.writePush("1")
+                fileWriter.write("ADD")
+            }
+            "--" -> {
+                fileWriter.writePush("1")
+                fileWriter.write("SUB")
+            }
+            "!" -> {
+                fileWriter.write("NEG")
+            }
+        }
     }
 
     override fun generateCodeAsInstanceMetParams() {
-        TODO("Not yet implemented")
-        //implenta la generación de la expresión teniendo en cuenta que además de ser parámetros,
-        //son parámetros para un met de instancia, por lo que deben mover el this además del sp y fp
+
+        generateCode()
+
+        fileWriter.writeSwap()
     }
 
     private fun resultingType(operandType: String?, operator: Token) =

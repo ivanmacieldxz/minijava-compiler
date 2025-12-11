@@ -170,9 +170,9 @@ class LiteralPrimary(
             }
             else -> {
                 fileWriter.writeDataSectionHeader()
-                fileWriter.writeDW("string${symbolTable.strLiteralsCount++}", "\"${token.lexeme}\"")
+                fileWriter.writeDW("string${symbolTable.strLiteralsCount++}", token.lexeme)
                 fileWriter.writeCodeSectionHeader()
-                fileWriter.writePush("string${symbolTable.strLiteralsCount}")
+                fileWriter.writePush("string${symbolTable.strLiteralsCount - 1}")
 
                 "String"
             }
@@ -413,7 +413,6 @@ class MethodCall(
 
         if (calledMethod.typeToken.type != TokenType.VOID) {
             fileWriter.writeRMEM(1)
-            fileWriter.writeSwap()
         }
 
         if (calledMethod.modifier.type == TokenType.STATIC)
@@ -452,7 +451,7 @@ class MethodCall(
             //acá tengo que acceder desde la vtable porque no sé si la implementación que es accesible desde el
             //tipo de la variable es la misma que la del tipo dinámico
             fileWriter.writeLoadRef(0)
-            fileWriter.writeLoadRef(calledMethod.offsetInVTable)
+            fileWriter.writeLoadRef(calledMethod.offsetInVTable, "${calledMethod.token}")
         }
 
         fileWriter.writeCall()
@@ -526,7 +525,7 @@ class ConstructorCall(
         fileWriter.writeCall()                  //me devuelve la referencia al cir
         fileWriter.write("DUP")
         //guardo en el cir (consumiendo la ref duplicada) la referencia a la vtable
-        fileWriter.writePush("vt@${token.lexeme}")
+        fileWriter.writePush("vt${token.lexeme}")
         fileWriter.writeStoreRef(0)
         //vuelvo a duplicar la referencia al cir
         fileWriter.write("DUP")

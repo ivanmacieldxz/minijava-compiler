@@ -18,10 +18,10 @@ class A extends X {
 }
 class B extends A{
     int b1;
-    int a1;
+    boolean a1;
 
     void m3(){
-        a1 = 20;
+        a1 = false;
     }
     static void b() {}
     int m2(int p2, B p3, A p4){
@@ -33,24 +33,31 @@ class Init{
     }
 }
 
-class C {
+class C extends B{
 
-    int m1() {
+    int a1;
+    int b1;
+    String s;
+    char c;
+
+    int m7() {
 
     }
 
-    void m2() {
-        m1();
+    void m8() {
+        m1(1);
     }
 
 }
 
 class D extends C {
-    int m1() {
+    char c;
+
+    int m9() {
 
     }
 
-    void m3() {
-        m1();
+    void m0() {
+        m9();
     }
 }

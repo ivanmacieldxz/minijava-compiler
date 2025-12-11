@@ -88,8 +88,8 @@ interface CodeFileGenerator {
         write("RET $num")
     }
 
-    fun writeLoadRef(offset: Int) {
-        write("LOADREF $offset")
+    fun writeLoadRef(offset: Int, comment: String = "") {
+        write("LOADREF $offset ; $comment")
     }
 
     fun writeStoreRef(offset: Int) {
@@ -101,7 +101,7 @@ interface CodeFileGenerator {
     }
 
     fun writeDW(label: String, string: String) {
-        write("$label: $string, 0")
+        write("$label: DW  $string, 0")
     }
 
     fun writeSwap() {

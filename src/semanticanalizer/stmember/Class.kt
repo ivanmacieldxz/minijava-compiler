@@ -1,7 +1,6 @@
 package semanticanalizer.stmember
 
 import fileWriter
-import org.w3c.dom.Attr
 import semanticanalizer.ast.member.Block
 import symbolTable
 import utils.Token
@@ -268,30 +267,40 @@ open class Class() : Modifiable {
         calculateMethodOffsets()
         calculateAttributeOffsets()
 
-        val nonStaticMethodsList = methodMap.values.filter { it.modifier.type == STATIC }
+        val nonStaticMethodsList = methodMap.values.filter { it.modifier.type != STATIC }
 
         //vtable
+        fileWriter.write("")
         fileWriter.writeDataSectionHeader()
+        fileWriter.write("")
 
         if (nonStaticMethodsList.isEmpty())
             fileWriter.writeLabeledInstruction("vt${token.lexeme}", "NOP")
         else {
             var dwSentence = "DW "
 
-            dwSentence += methodMap.values.filter { it.modifier.type != STATIC }.joinToString {
-                it.getCodeLabel()
+            val methodsGroupedByClass = methodMap.values.sortedBy {
+                ancestors.reversed().indexOf(it.parentClass.token.lexeme)
             }
+
+            dwSentence += methodsGroupedByClass.filter { it.modifier.type != STATIC }.joinToString {
+                it.getCodeLabel()
+            }.takeIf { it != "" } ?: "0"
 
             fileWriter.writeLabeledInstruction("vt${token.lexeme}", dwSentence)
         }
 
+        fileWriter.write("")
         fileWriter.writeCodeSectionHeader()
+        fileWriter.write("")
+
+        constructor.generateCode()
+        fileWriter.write("")
 
         methodMap.values.forEach { met ->
             met.takeIf { this.owns(met) }?.generateCode()
+            fileWriter.write("")
         }
-
-        constructor.generateCode()
 
         fileWriter.write("")
     }
@@ -313,7 +322,7 @@ open class Class() : Modifiable {
 
             var initIndex = (parentClass.attributeMap.flatMap { it.value }.maxByOrNull {
                 it.offsetInCIR
-            }?.offsetInCIR?.plus(1)) ?: 0
+            }?.offsetInCIR?.plus(1)) ?: 1
 
             attrGroupedByParentClassList.forEach {
                 if (it.parentClass == this)
@@ -552,6 +561,18 @@ object System : Class() {
             ).also {
                 it.typeToken = Token(VOID, "void", -1)
                 it.modifier = staticToken
+
+                it.block = object: Block(
+                    it,
+                    DummyToken,
+                    null
+                ) {
+                    override fun check() {}
+
+                    override fun generateCode() {
+                        fileWriter.write("PRNLN")
+                    }
+                }
             },
             "printBln" to Method(
                 Token(MET_VAR_IDENTIFIER, "printBln", -1),
@@ -575,6 +596,8 @@ object System : Class() {
                     override fun check() {}
 
                     override fun generateCode() {
+                        fileWriter.writeLoad(3)
+                        fileWriter.write("BPRINT")
                         fileWriter.write("PRNLN")
                     }
                 }

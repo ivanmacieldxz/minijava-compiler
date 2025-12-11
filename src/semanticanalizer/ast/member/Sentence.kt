@@ -313,12 +313,25 @@ class Return(
 
         body?.let{
             it.generateCode()
-            if (parentMember is Constructor || (parentMember as Method).typeToken.type != TokenType.VOID)
-                fileWriter.writeStore(3 + parentMember.paramMap.size + 1)
+
+            if (parentMember is Constructor)
+                fileWriter.writeStore(2 + parentMember.paramMap.size + 2)
+            else if ((parentMember as Method).typeToken.type != TokenType.VOID) {
+                val storeSize = 2 + parentMember.paramMap.size + (2.takeIf {
+                    (parentMember as Method).modifier.type != TokenType.STATIC
+                } ?: 1)
+
+                fileWriter.writeStore(storeSize)
+            }
         }
 
+        val returnSize = parentMember.paramMap.size +
+                (1.takeIf { parentMember is Constructor ||
+                        (parentMember as Method).modifier.type != TokenType.STATIC }
+                ?: 0)
+
         fileWriter.writeStoreFP()
-        fileWriter.writeRet(parentMember.paramMap.size + 1)
+        fileWriter.writeRet(returnSize)
 
     }
 }
@@ -398,7 +411,6 @@ class Assignment(
     }
 
     override fun generateCode() {
-        val baseAccess = (leftExpression as BasicExpression).operand as VariableAccess
 
         val containerBlock = {
             var sentencePointer = parentSentence!!
@@ -416,6 +428,8 @@ class Assignment(
         rightExpression.generateCode()
 
         var receiverType: String
+        val baseAccess = (leftExpression as BasicExpression).operand as VariableAccess
+        var token = baseAccess.token
 
         if (baseAccess.chained == null) {
             when (token.lexeme) {
@@ -465,6 +479,8 @@ class Assignment(
                 access = access.chained!!
             }
 
+            token = access.token
+
             val matchingNameAttributeSet = symbolTable.classMap[receiverType]!!.attributeMap[token.lexeme]!!
 
             //obtener el que sea de esta clase o la última redefinición del atributo del mismo nombre
@@ -473,10 +489,8 @@ class Assignment(
             val offset = attribute.offsetInCIR
 
             fileWriter.writeLoad(3)
+            fileWriter.writeSwap()
             fileWriter.writeStoreRef(offset)
-
-            attribute.typeToken.lexeme
-
         }
 
 
