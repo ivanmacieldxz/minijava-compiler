@@ -317,7 +317,7 @@ class VariableAccess(
 
         val offset = attribute.offsetInCIR
 
-        fileWriter.writeLoad(3)
+
         fileWriter.writeLoadRef(offset)
 
         val type = attribute.typeToken.lexeme
@@ -591,7 +591,7 @@ class ConstructorCall(
 
         //this
         fileWriter.writeRMEM(1)
-        fileWriter.writePush(cirSize.toString())
+        fileWriter.writePush(cirSize.toString() + " ; tamaño cir ${token.lexeme}")
         fileWriter.writePush("simple_malloc")
         fileWriter.writeCall()                  //me devuelve la referencia al cir
         fileWriter.write("DUP")
