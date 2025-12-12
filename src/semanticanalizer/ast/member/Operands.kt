@@ -27,6 +27,12 @@ interface Primary : Operand {
     }
 
     fun generateCodeWithoutChained(): String
+
+    fun popIfChainedIsStaticMethodAccess(receiverType: String) {
+        if (chained is MethodCall &&
+            symbolTable.classMap[receiverType]!!.methodMap[chained!!.token.lexeme]!!.modifier.type == TokenType.STATIC)
+            fileWriter.writePop()
+    }
 }
 
 interface Call: Primary {
@@ -118,7 +124,11 @@ class ParenthesizedExpression(
     override fun generateCode() {
         expression.generateCode()
 
-        chained?.generateAsChained(expression.type!!)
+        val receiverType = expression.type!!
+
+        popIfChainedIsStaticMethodAccess(receiverType)
+
+        chained?.generateAsChained(receiverType)
     }
 
     override fun generateCodeWithoutChained(): String {
@@ -172,6 +182,8 @@ class LiteralPrimary(
     override fun generateCode() {
 
         val receiverType = generateCodeWithoutChained()
+
+        popIfChainedIsStaticMethodAccess(receiverType)
 
         chained?.generateAsChained(receiverType)
 
@@ -257,6 +269,8 @@ class VariableAccess(
     override fun generateCode() {
         val receiverType = generateCodeWithoutChained()
 
+        popIfChainedIsStaticMethodAccess(receiverType)
+
         chained?.generateAsChained(receiverType)
     }
 
@@ -306,7 +320,11 @@ class VariableAccess(
         fileWriter.writeLoad(3)
         fileWriter.writeLoadRef(offset)
 
-        return attribute.typeToken.lexeme
+        val type = attribute.typeToken.lexeme
+
+        popIfChainedIsStaticMethodAccess(type)
+
+        return type
     }
 
     override fun generateAsChained(receiverType: String) {
@@ -321,7 +339,11 @@ class VariableAccess(
 
         fileWriter.writeLoadRef(offset)
 
-        chained?.generateAsChained(attribute.typeToken.lexeme)
+        val receiverType = attribute.typeToken.lexeme
+
+        popIfChainedIsStaticMethodAccess(receiverType)
+
+        chained?.generateAsChained(receiverType)
     }
 }
 
@@ -436,11 +458,15 @@ class MethodCall(
     override fun generateCode() {
         val receiverType = generateCodeWithoutChained()
 
+        popIfChainedIsStaticMethodAccess(receiverType)
+
         chained?.generateAsChained(receiverType)
     }
 
     override fun generateAsChained(receiverType: String) {
         val receiverType = generateCodeWithoutChained(receiverType)
+
+        popIfChainedIsStaticMethodAccess(receiverType)
 
         chained?.generateAsChained(receiverType)
     }
@@ -551,7 +577,11 @@ class ConstructorCall(
     override fun generateCode() {
         generateCodeWithoutChained()
 
-        chained?.generateAsChained(token.lexeme)
+        val receiverType = token.lexeme
+
+        popIfChainedIsStaticMethodAccess(receiverType)
+
+        chained?.generateAsChained(receiverType)
     }
 
     override fun generateCodeWithoutChained(): String {

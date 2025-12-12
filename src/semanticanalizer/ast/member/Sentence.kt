@@ -124,25 +124,6 @@ class If(
         elseSentence?.printSubAST(nestingLevel)
     }
 
-    override fun generateCode() {
-        condition!!.generateCode()
-
-        val ifIdentityHashCode = System.identityHashCode(this)
-        val endThenLabel = "endThen@$ifIdentityHashCode"
-        val endIfLabel = "endIf@$ifIdentityHashCode"
-
-        fileWriter.write("BF $endThenLabel")
-        body!!.generateCode()
-        fileWriter.writeLabeledInstruction(endThenLabel, "NOP")
-
-        elseSentence?.let {
-            fileWriter.write("JUMP $endIfLabel")
-            it.generateCode()
-            fileWriter.writeLabeledInstruction(endIfLabel, "NOP")
-        }
-
-    }
-
     override fun check() {
 
         condition!!.check("boolean")
@@ -161,6 +142,23 @@ class If(
                 body.check(null)
             }
         }
+    }
+
+    override fun generateCode() {
+        condition!!.generateCode()
+
+        val ifIdentityHashCode = System.identityHashCode(this)
+        val endThenLabel = "endThen@$ifIdentityHashCode"
+        val endIfLabel = "endIf@$ifIdentityHashCode"
+
+        fileWriter.write("BF $endThenLabel")
+        body!!.generateCode()
+        fileWriter.write("JUMP $endIfLabel")
+        fileWriter.writeLabeledInstruction(endThenLabel, "NOP")
+
+        elseSentence?.generateCode()
+
+        fileWriter.writeLabeledInstruction(endIfLabel, "NOP")
     }
 }
 

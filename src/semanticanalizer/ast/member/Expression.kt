@@ -188,7 +188,7 @@ class BasicExpression(
                 while (endOfChaining.chained != null)
                     endOfChaining = endOfChaining.chained!!
 
-                if (endOfChaining !is VariableAccess)
+                if (endOfChaining !is VariableAccess && operator!!.lexeme in setOf("++", "--"))
                     throw object: InvalidUnaryOperatorException(operator!!, operandType!!) {
                         override val message: String
                             get() = "Los operadores de incremento y decremento son aplicables solo sobre " +
@@ -231,7 +231,7 @@ class BasicExpression(
             val containerClass = containerCallable.parentClass
 
             var receiverType: String
-            val baseAccess = operand as VariableAccess
+            val baseAccess = operand as Primary
             var token = baseAccess.token
 
             if (baseAccess.chained == null) {
@@ -267,7 +267,7 @@ class BasicExpression(
                         }
                     }
 
-                    else -> {
+                    in containerClass.attributeMap -> {
                         val matchingNameAttributeSet = containerClass.attributeMap[token.lexeme]!!
 
                         //obtener el que sea de esta clase o la última redefinición del atributo del mismo nombre
@@ -290,6 +290,10 @@ class BasicExpression(
                             baseAccess.generateCode()
                         }
                     }
+                    else -> {
+                        baseAccess.generateCode()
+                        writeUnaryOperator()
+                    }
                 }
             } else {
 
@@ -300,7 +304,7 @@ class BasicExpression(
                 var access = baseAccess.chained!!
 
                 while (access.chained != null) {
-                    receiverType = baseAccess.generateCodeWithoutChained(receiverType)
+                    receiverType = access.generateCodeWithoutChained(receiverType)
 
                     access = access.chained!!
                 }
