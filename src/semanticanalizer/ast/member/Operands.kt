@@ -10,6 +10,7 @@ import utils.Token
 import utils.TokenType
 import kotlin.collections.contains
 import kotlin.collections.first
+import kotlin.collections.indexOf
 
 interface Operand: ASTMember {
     var token: Token
@@ -25,6 +26,7 @@ interface Primary : Operand {
         print("\t".repeat(nestingLevel) + this)
     }
 
+    fun generateCodeWithoutChained(): String
 }
 
 interface Call: Primary {
@@ -34,6 +36,7 @@ interface Call: Primary {
 interface Chained: Primary {
     fun checkChained(receiverType: String?): String
     fun generateAsChained(receiverType: String)
+    fun generateCodeWithoutChained(receiverType: String): String
 }
 
 class Primitive(override var token: Token): Operand {
@@ -117,6 +120,11 @@ class ParenthesizedExpression(
 
         chained?.generateAsChained(expression.type!!)
     }
+
+    override fun generateCodeWithoutChained(): String {
+        expression.generateCode()
+        return expression.type!!
+    }
 }
 
 class LiteralPrimary(
@@ -163,9 +171,16 @@ class LiteralPrimary(
 
     override fun generateCode() {
 
-        val receiverType = when (token.type) {
+        val receiverType = generateCodeWithoutChained()
+
+        chained?.generateAsChained(receiverType)
+
+    }
+
+    override fun generateCodeWithoutChained() =
+        when (token.type) {
             TokenType.THIS -> {
-                fileWriter.writeLoad(3)
+                fileWriter.writeLoad(3, "carga del this")
                 containerClass.token.lexeme
             }
             else -> {
@@ -177,10 +192,6 @@ class LiteralPrimary(
                 "String"
             }
         }
-
-        chained?.generateAsChained(receiverType)
-
-    }
 }
 
 class VariableAccess(
@@ -249,7 +260,7 @@ class VariableAccess(
         chained?.generateAsChained(receiverType)
     }
 
-    internal fun generateCodeWithoutChained() =
+    override fun generateCodeWithoutChained() =
         when (token.lexeme) {
             in containerBlock.visibleVariablesMap -> {
                 val position = -containerBlock.visibleVariablesMap.keys.indexOf(token.lexeme)
@@ -285,6 +296,18 @@ class VariableAccess(
             }
         }
 
+    override fun generateCodeWithoutChained(receiverType: String): String {
+        val matchingNameAttributeSet = symbolTable.classMap[receiverType]!!.attributeMap[token.lexeme]!!
+
+        val attribute = matchingNameAttributeSet.first()
+
+        val offset = attribute.offsetInCIR
+
+        fileWriter.writeLoad(3)
+        fileWriter.writeLoadRef(offset)
+
+        return attribute.typeToken.lexeme
+    }
 
     override fun generateAsChained(receiverType: String) {
         //la diferencia acá es que no tiene que cargar this porque la referencia ya está puesta, solo tiene que
@@ -297,6 +320,8 @@ class VariableAccess(
         val offset = attribute.offsetInCIR
 
         fileWriter.writeLoadRef(offset)
+
+        chained?.generateAsChained(attribute.typeToken.lexeme)
     }
 }
 
@@ -409,6 +434,18 @@ class MethodCall(
     }
 
     override fun generateCode() {
+        val receiverType = generateCodeWithoutChained()
+
+        chained?.generateAsChained(receiverType)
+    }
+
+    override fun generateAsChained(receiverType: String) {
+        val receiverType = generateCodeWithoutChained(receiverType)
+
+        chained?.generateAsChained(receiverType)
+    }
+
+    override fun generateCodeWithoutChained(): String {
         val calledMethod = containerClass.methodMap[token.lexeme]!!
 
         if (calledMethod.typeToken.type != TokenType.VOID) {
@@ -417,37 +454,35 @@ class MethodCall(
 
         if (calledMethod.modifier.type == TokenType.STATIC)
             arguments.reversed().forEach { it.generateCode() }
-        else
+        else {
+            fileWriter.writeLoad(3)
+
             arguments.reversed().forEach { it.generateCodeAsInstanceMetParams() }
+        }
 
         fileWriter.writePush(calledMethod.getCodeLabel())
         fileWriter.writeCall()
 
-        chained?.generateAsChained(calledMethod.typeToken.lexeme)
+        return calledMethod.typeToken.lexeme
     }
 
-    override fun generateAsChained(receiverType: String) {
-        //acordate que si lo recibís como encadenado, la implementación del mét no la podés determinar
-        //a partir del tipo del parámetro, porque puede ser que el tipo dinámico no coincida con el tipo estático
-
-        //considerá que igual, aunque se reciba como encadenado, si es estático, se lo llama directamente
-        //con la label asociada al mét, porque en este caso sí o sí es de la clase, al no haber
-        //redefinición de estáticos
-
+    override fun generateCodeWithoutChained(receiverType: String): String {
         val calledMethod = symbolTable.classMap[receiverType]!!.methodMap[token.lexeme]!!
 
         if (calledMethod.typeToken.type != TokenType.VOID) {
             fileWriter.writeRMEM(1)
             fileWriter.writeSwap()
         }
+
         if (calledMethod.modifier.type == TokenType.STATIC) {
             arguments.reversed().forEach { it.generateCode() }
 
             fileWriter.writePush(calledMethod.getCodeLabel())
-        } else {
+        }else {
             arguments.reversed().forEach { it.generateCodeAsInstanceMetParams() }
 
             fileWriter.writeDup()
+
             //acá tengo que acceder desde la vtable porque no sé si la implementación que es accesible desde el
             //tipo de la variable es la misma que la del tipo dinámico
             fileWriter.writeLoadRef(0, "acceso a vtable")
@@ -456,7 +491,7 @@ class MethodCall(
 
         fileWriter.writeCall()
 
-        chained?.generateAsChained(calledMethod.typeToken.lexeme)
+        return calledMethod.typeToken.lexeme
     }
 }
 
@@ -514,6 +549,12 @@ class ConstructorCall(
     }
 
     override fun generateCode() {
+        generateCodeWithoutChained()
+
+        chained?.generateAsChained(token.lexeme)
+    }
+
+    override fun generateCodeWithoutChained(): String {
         val constructorClass = symbolTable.classMap[token.lexeme]!!
         val calledConstructor = constructorClass.constructor
         val cirSize = constructorClass.attributeMap.size + 1
@@ -535,7 +576,7 @@ class ConstructorCall(
         fileWriter.writePush(calledConstructor.getCodeLabel())
         fileWriter.writeCall()
 
-        chained?.generateAsChained(token.lexeme)
+        return token.lexeme
     }
 }
 
@@ -609,6 +650,12 @@ class StaticMethodCall(
     }
 
     override fun generateCode() {
+        val receiverType = generateCodeWithoutChained()
+
+        chained?.generateAsChained(receiverType)
+    }
+
+    override fun generateCodeWithoutChained(): String {
         val calledMethod = symbolTable.classMap[token.lexeme]!!.methodMap[calledMethodToken.lexeme]!!
 
         if (calledMethod.typeToken.type != TokenType.VOID) {
@@ -621,7 +668,7 @@ class StaticMethodCall(
         fileWriter.writePush(calledMethod.getCodeLabel())
         fileWriter.writeCall()
 
-        chained?.generateAsChained(calledMethod.typeToken.lexeme )
+        return calledMethod.typeToken.lexeme
     }
 }
 

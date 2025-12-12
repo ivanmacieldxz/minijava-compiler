@@ -85,7 +85,7 @@ class SymbolTable {
                 if (foundMain.not()) {
                     foundMain = it.token.lexeme == "main" && it.modifier.lexeme == "static"
                     mainMethod = it
-                } else if (it.token.lexeme == "main" && it.modifier.lexeme == "static")
+                } else if (it.token.lexeme == "main" && it.modifier.lexeme == "static" && it != mainMethod)
                     throw object : SemanticException(
                         "Solo se admite un método main por archivo MiniJava.",
                         DummyToken

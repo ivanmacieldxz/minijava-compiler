@@ -1,10 +1,17 @@
 package test;
 
+import java.lang.reflect.Array;
+
 class Test {
     String x = "en Test";
 }
 class Test2 extends Test {
     String x = "en Test 2";
+
+    Test2() {
+        super();
+        //super(); no se puede dos veces
+    }
 }
 
 class Test3 extends Test2 {
@@ -20,4 +27,12 @@ class Main {
 
         x.testX();
     }
+
+    void x(Main2 m) {
+        Main2.main(new String[0]);
+    }
+}
+
+class Main2 extends Main {
+
 }

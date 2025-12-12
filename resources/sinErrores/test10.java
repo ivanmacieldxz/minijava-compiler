@@ -2,7 +2,7 @@
 
 class A{
     B b;
-    A(B b){
+    public A(B b){
         this.b = b;
     }
     int met(){
@@ -12,7 +12,7 @@ class A{
 
 class B{
     C c;
-    B(C c){
+    public B(C c){
         this.c = c;
     }
 }
@@ -25,6 +25,17 @@ class C{
 
 class Init{
     static void main(){
-        debugPrint((new A(new B(new C()))).b.c.met());
+        debugPrint(
+            (
+                new A(
+                    new B(
+                        new C()
+                    )
+                )
+            )
+            .b
+            .c
+            .met()
+        );
     }
 }

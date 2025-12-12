@@ -4,6 +4,10 @@ class A {
     B a1;
 
     int a2;
+
+    static void main() {
+
+    }
 }
 
 class B extends A{

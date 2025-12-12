@@ -215,8 +215,11 @@ class BasicExpression(
                         is Expression -> {
                             sentencePointer.parentNode
                         }
+                        is Sentence -> {
+                            sentencePointer.parentSentence!!
+                        }
                         else -> {
-                            (sentencePointer as Sentence).parentSentence!!
+                            (sentencePointer as Primary).parent
                         }
                     }
                 }
@@ -226,8 +229,6 @@ class BasicExpression(
 
             val containerCallable = containerBlock.parentMember
             val containerClass = containerCallable.parentClass
-
-            operand.generateCode()
 
             var receiverType: String
             val baseAccess = operand as VariableAccess
@@ -242,7 +243,10 @@ class BasicExpression(
 
                         writeUnaryOperator()
 
-                        fileWriter.writeStore(position)
+                        if (operator!!.lexeme in setOf("++", "--")) {
+                            fileWriter.writeStore(position)
+                            baseAccess.generateCode()
+                        }
                     }
 
                     in containerCallable.paramMap -> {
@@ -257,7 +261,10 @@ class BasicExpression(
 
                         writeUnaryOperator()
 
-                        fileWriter.writeStore(position)
+                        if (operator!!.lexeme in setOf("++", "--")) {
+                            fileWriter.writeStore(position)
+                            baseAccess.generateCode()
+                        }
                     }
 
                     else -> {
@@ -278,7 +285,10 @@ class BasicExpression(
 
                         writeUnaryOperator()
 
-                        fileWriter.writeStoreRef(offset)
+                        if (operator!!.lexeme in setOf("++", "--")) {
+                            fileWriter.writeStoreRef(offset)
+                            baseAccess.generateCode()
+                        }
                     }
                 }
             } else {
@@ -290,7 +300,7 @@ class BasicExpression(
                 var access = baseAccess.chained!!
 
                 while (access.chained != null) {
-                    receiverType = baseAccess.generateCodeWithoutChained()
+                    receiverType = baseAccess.generateCodeWithoutChained(receiverType)
 
                     access = access.chained!!
                 }
@@ -312,15 +322,17 @@ class BasicExpression(
 
                 writeUnaryOperator()
 
-                fileWriter.writeStoreRef(offset)
+                if (operator!!.lexeme in setOf("++", "--")) {
+                    fileWriter.writeStoreRef(offset)
+                    baseAccess.generateCode()
+                }
             }
 
-            baseAccess.generateCode()
+
 
         } ?: {
             operand.generateCode()
         }()
-
     }
 
     private fun writeUnaryOperator() {
@@ -339,7 +351,7 @@ class BasicExpression(
                 fileWriter.write("SUB")
             }
             "!" -> {
-                fileWriter.write("NEG")
+                fileWriter.write("NOT")
             }
         }
     }

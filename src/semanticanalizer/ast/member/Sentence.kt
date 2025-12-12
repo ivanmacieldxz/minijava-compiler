@@ -76,7 +76,9 @@ open class Block(
 
     override fun generateCode() {
         visibleVariablesMap.size.takeIf { it != 0 }?.let {
-            fileWriter.writeRMEM(visibleVariablesMap.size)
+            fileWriter.writeRMEM(visibleVariablesMap.filter {
+                it.value.parentSentence == this
+            }.size)
         }
 
         childrenList.forEach {
@@ -86,7 +88,9 @@ open class Block(
                 fileWriter.writePop()
         }
 
-        fileWriter.writeFreeLocalVars(visibleVariablesMap.size)
+        fileWriter.writeFreeLocalVars(visibleVariablesMap.filter {
+            it.value.parentSentence == this
+        }.size)
     }
 }
 
@@ -300,16 +304,7 @@ class Return(
     }
 
     override fun generateCode() {
-        var ownerBlock: Block?
-        var sentencePointer = parentSentence!!
-
-        while (sentencePointer !is Block) {
-            sentencePointer = sentencePointer.parentSentence!!
-        }
-
-        ownerBlock = sentencePointer
-
-        fileWriter.writeFreeLocalVars(ownerBlock.visibleVariablesMap.size)
+        fileWriter.writeFreeLocalVars(parentMember.block!!.visibleVariablesMap.size)
 
         body?.let{
             it.generateCode()
@@ -428,7 +423,8 @@ class Assignment(
         rightExpression.generateCode()
 
         var receiverType: String
-        val baseAccess = (leftExpression as BasicExpression).operand as VariableAccess
+        val baseAccess = (leftExpression as BasicExpression).operand as? VariableAccess ?:
+            (leftExpression as BasicExpression).operand as LiteralPrimary
         var token = baseAccess.token
 
         if (baseAccess.chained == null) {
@@ -474,7 +470,7 @@ class Assignment(
             var access = baseAccess.chained!!
 
             while (access.chained != null) {
-                receiverType = baseAccess.generateCodeWithoutChained()
+                receiverType = access.generateCodeWithoutChained(receiverType)
 
                 access = access.chained!!
             }
@@ -488,7 +484,6 @@ class Assignment(
 
             val offset = attribute.offsetInCIR
 
-            fileWriter.writeLoad(3)
             fileWriter.writeSwap()
             fileWriter.writeStoreRef(offset)
         }

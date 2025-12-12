@@ -3,7 +3,7 @@
 class A{
     B b;
     int c;
-    A(int b){
+    public A(int b){
         this.b = null;
         c = b;
     }

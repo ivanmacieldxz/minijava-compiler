@@ -64,8 +64,8 @@ interface CodeFileGenerator {
         write("STORE $offset")
     }
 
-    fun writeLoad(offset: Int) {
-        write("LOAD $offset")
+    fun writeLoad(offset: Int, comment: String = "") {
+        write("LOAD $offset ; $comment")
     }
 
     fun writeStoreFP() {

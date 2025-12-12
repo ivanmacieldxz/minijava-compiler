@@ -40,4 +40,8 @@ class X {
 
         }
     }
+
+    static void main() {
+
+    }
 }

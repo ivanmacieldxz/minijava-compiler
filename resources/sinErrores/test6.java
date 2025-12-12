@@ -2,7 +2,7 @@
 
 class A{
     B b;
-    A(){
+    public A(){
         b = null;
     }
 }

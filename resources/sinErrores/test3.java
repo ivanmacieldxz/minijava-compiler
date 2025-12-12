@@ -8,6 +8,6 @@ class A{
 
 class Init{
     static void main(){
-        debugPrint((new A()).met());
+        Init.debugPrint((new A()).met());
     }
 }

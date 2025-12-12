@@ -1,7 +1,6 @@
 import lexer.LexicalAnalyzer
 import lexer.LexicalAnalyzerImpl
 import lexer.LexicalException
-import outsourcemanager.CodeFileGenerator
 import outsourcemanager.CodeFileGeneratorImpl
 import parser.SyntacticAnalyzerItrImpl
 import parser.SyntacticException
@@ -11,8 +10,8 @@ import semanticanalizer.stmember.Object
 import sourcemanager.SourceManager
 import sourcemanager.SourceManagerEfImpl
 
-lateinit var symbolTable: SymbolTable
-lateinit var fileWriter: CodeFileGenerator
+//lateinit var symbolTable: SymbolTable
+//lateinit var fileWriter: CodeFileGenerator
 
 fun main(args: Array<String>) {
 
@@ -35,8 +34,6 @@ fun main(args: Array<String>) {
 
         symbolTable.checkSentences()
 
-        fileWriter.createFile(args[1])
-        symbolTable.generateCode()
 
 //        symbolTable.classMap.values.forEach {
 //
@@ -63,8 +60,6 @@ fun main(args: Array<String>) {
 //
 //            println()
 //        }
-
-
 
     } catch (e: LexicalException) {
         print(e.errorReport())
