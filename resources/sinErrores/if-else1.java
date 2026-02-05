@@ -5,8 +5,8 @@ class Init extends System {
         var x = true;
 
         if (!x) {
-            System.printSln("no debería entrar al if");
+            printSln("no debería entrar al if");
         } else
-            System.printSln("Entro al else, como se esperaba");
+            printSln("Entro al else, como se esperaba");
     }
 }
