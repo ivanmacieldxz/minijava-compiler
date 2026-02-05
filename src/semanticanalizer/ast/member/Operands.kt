@@ -81,7 +81,12 @@ class Primitive(override var token: Token): Operand {
     override fun generateCode() {
         val primitiveValue: String = when (token.type) {
             TokenType.INTEGER_LITERAL -> token.lexeme
-            TokenType.CHAR_LITERAL -> token.lexeme[0].code.toString()
+            TokenType.CHAR_LITERAL ->
+                if (token.lexeme[1] == '\\') {
+                    token.lexeme[2].code.toString()
+                } else {
+                    token.lexeme[1].code.toString()
+                }
             TokenType.TRUE -> "1"
             TokenType.FALSE -> "0"
             else -> "0      #NULL"

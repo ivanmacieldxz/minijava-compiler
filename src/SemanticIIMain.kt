@@ -34,6 +34,7 @@ fun main(args: Array<String>) {
 
         symbolTable.checkSentences()
 
+        printAST()
 
 //        symbolTable.classMap.values.forEach {
 //

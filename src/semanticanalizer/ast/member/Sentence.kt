@@ -51,7 +51,7 @@ open class Block(
     }
 
     override fun printSubAST(nestingLevel: Int) {
-        println("\t".repeat(nestingLevel) + "Bloque:")
+        println("\t".repeat(nestingLevel) + "Bloque (padre: ${parentSentence?.token}):")
         childrenList.forEach { children ->
             children.printSubAST(nestingLevel + 1)
         }
@@ -84,8 +84,9 @@ open class Block(
         childrenList.forEach {
             it.generateCode()
 
-            if (it is Expression && it.type != "void")
+            if (it is Expression && it.type != "void") {
                 fileWriter.writePop()
+            }
         }
 
         fileWriter.writeFreeLocalVars(visibleVariablesMap.filter {
@@ -142,6 +143,8 @@ class If(
                 body.check(null)
             }
         }
+
+        elseSentence?.check()
     }
 
     override fun generateCode() {
@@ -344,11 +347,12 @@ class LocalVar(
     }
 
     override fun printSubAST(nestingLevel: Int) {
-        println("\t".repeat(nestingLevel) + "Var local($varName):")
+        println("\t".repeat(nestingLevel) + "Var local($varName) (abuelo: ${parentSentence!!.parentSentence!!.token}:")
         expression.printSubAST(nestingLevel + 1)
     }
 
     override fun check() {
+
         type = expression.check(null)
             ?: throw InvalidVarInitializationException(
                 token,
@@ -421,8 +425,7 @@ class Assignment(
         rightExpression.generateCode()
 
         var receiverType: String
-        val baseAccess = (leftExpression as BasicExpression).operand as? VariableAccess ?:
-            (leftExpression as BasicExpression).operand as LiteralPrimary
+        val baseAccess = (leftExpression as BasicExpression).operand as Primary
         var token = baseAccess.token
 
         if (baseAccess.chained == null) {

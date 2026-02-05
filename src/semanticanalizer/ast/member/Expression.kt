@@ -231,108 +231,110 @@ class BasicExpression(
             val containerClass = containerCallable.parentClass
 
             var receiverType: String
-            val baseAccess = operand as Primary
+            val baseAccess = (operand as? Primary) ?: (operand as Primitive)
             var token = baseAccess.token
 
-            if (baseAccess.chained == null) {
-                when (token.lexeme) {
-                    in containerBlock.visibleVariablesMap -> {
-                        val position = -containerBlock.visibleVariablesMap.keys.indexOf(token.lexeme)
+            if (baseAccess is Primary) {
+                if (baseAccess.chained == null) {
+                    when (token.lexeme) {
+                        in containerBlock.visibleVariablesMap -> {
+                            val position = -containerBlock.visibleVariablesMap.keys.indexOf(token.lexeme)
 
-                        fileWriter.writeLoad(position)
+                            fileWriter.writeLoad(position)
 
-                        writeUnaryOperator()
+                            writeUnaryOperator()
 
-                        if (operator!!.lexeme in setOf("++", "--")) {
-                            fileWriter.writeStore(position)
+                            if (operator!!.lexeme in setOf("++", "--")) {
+                                fileWriter.writeStore(position)
+                                baseAccess.generateCode()
+                            }
+                        }
+
+                        in containerCallable.paramMap -> {
+                            val stackRecordOffset = (containerCallable as? Method)?.let {
+                                if (it.modifier.type == TokenType.STATIC) 2
+                                else 3
+                            } ?: 3
+
+                            val position = containerCallable.paramMap.keys.indexOf(token.lexeme) + stackRecordOffset + 1
+
+                            fileWriter.writeLoad(position)
+
+                            writeUnaryOperator()
+
+                            if (operator!!.lexeme in setOf("++", "--")) {
+                                fileWriter.writeStore(position)
+                                baseAccess.generateCode()
+                            }
+                        }
+
+                        in containerClass.attributeMap -> {
+                            val matchingNameAttributeSet = containerClass.attributeMap[token.lexeme]!!
+
+                            //obtener el que sea de esta clase o la última redefinición del atributo del mismo nombre
+                            val attribute = matchingNameAttributeSet.firstOrNull {
+                                it.parentClass == containerClass
+                            } ?: matchingNameAttributeSet.first()
+
+                            val offset = attribute.offsetInCIR
+
+                            fileWriter.writeLoad(3)
+                            fileWriter.writeSwap()
+
+                            fileWriter.writeDup()
+                            fileWriter.writeLoadRef(offset)
+
+                            writeUnaryOperator()
+
+                            if (operator!!.lexeme in setOf("++", "--")) {
+                                fileWriter.writeStoreRef(offset)
+                                baseAccess.generateCode()
+                            }
+                        }
+                        else -> {
                             baseAccess.generateCode()
+                            writeUnaryOperator()
                         }
                     }
+                } else {
 
-                    in containerCallable.paramMap -> {
-                        val stackRecordOffset = (containerCallable as? Method)?.let {
-                            if (it.modifier.type == TokenType.STATIC) 2
-                            else 3
-                        } ?: 3
+                    //carga normal
+                    receiverType = baseAccess.generateCodeWithoutChained()
 
-                        val position = containerCallable.paramMap.keys.indexOf(token.lexeme) + stackRecordOffset + 1
+                    //iteracion sobre encadenado
+                    var access = baseAccess.chained!!
 
-                        fileWriter.writeLoad(position)
+                    while (access.chained != null) {
+                        receiverType = access.generateCodeWithoutChained(receiverType)
 
-                        writeUnaryOperator()
-
-                        if (operator!!.lexeme in setOf("++", "--")) {
-                            fileWriter.writeStore(position)
-                            baseAccess.generateCode()
-                        }
+                        access = access.chained!!
                     }
 
-                    in containerClass.attributeMap -> {
-                        val matchingNameAttributeSet = containerClass.attributeMap[token.lexeme]!!
+                    token = access.token
 
-                        //obtener el que sea de esta clase o la última redefinición del atributo del mismo nombre
-                        val attribute = matchingNameAttributeSet.firstOrNull {
-                            it.parentClass == containerClass
-                        } ?: matchingNameAttributeSet.first()
+                    val matchingNameAttributeSet = symbolTable.classMap[receiverType]!!.attributeMap[token.lexeme]!!
 
-                        val offset = attribute.offsetInCIR
+                    //obtener el que sea de esta clase o la última redefinición del atributo del mismo nombre
+                    val attribute = matchingNameAttributeSet.first()
 
-                        fileWriter.writeLoad(3)
-                        fileWriter.writeSwap()
+                    val offset = attribute.offsetInCIR
 
-                        fileWriter.writeDup()
-                        fileWriter.writeLoadRef(offset)
+                    fileWriter.writeLoad(3)
+                    fileWriter.writeSwap()
 
-                        writeUnaryOperator()
+                    fileWriter.writeDup()
+                    fileWriter.writeLoadRef(offset)
 
-                        if (operator!!.lexeme in setOf("++", "--")) {
-                            fileWriter.writeStoreRef(offset)
-                            baseAccess.generateCode()
-                        }
-                    }
-                    else -> {
+                    writeUnaryOperator()
+
+                    if (operator!!.lexeme in setOf("++", "--")) {
+                        fileWriter.writeStoreRef(offset)
                         baseAccess.generateCode()
-                        writeUnaryOperator()
                     }
                 }
             } else {
-
-                //carga normal
-                receiverType = baseAccess.generateCodeWithoutChained()
-
-                //iteracion sobre encadenado
-                var access = baseAccess.chained!!
-
-                while (access.chained != null) {
-                    receiverType = access.generateCodeWithoutChained(receiverType)
-
-                    access = access.chained!!
-                }
-
-                token = access.token
-
-                val matchingNameAttributeSet = symbolTable.classMap[receiverType]!!.attributeMap[token.lexeme]!!
-
-                //obtener el que sea de esta clase o la última redefinición del atributo del mismo nombre
-                val attribute = matchingNameAttributeSet.first()
-
-                val offset = attribute.offsetInCIR
-
-                fileWriter.writeLoad(3)
-                fileWriter.writeSwap()
-
-                fileWriter.writeDup()
-                fileWriter.writeLoadRef(offset)
-
-                writeUnaryOperator()
-
-                if (operator!!.lexeme in setOf("++", "--")) {
-                    fileWriter.writeStoreRef(offset)
-                    baseAccess.generateCode()
-                }
+                baseAccess.generateCode()
             }
-
-
 
         } ?: {
             operand.generateCode()

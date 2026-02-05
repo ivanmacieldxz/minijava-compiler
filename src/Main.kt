@@ -26,7 +26,6 @@ fun main(args: Array<String>) {
 
 
     try {
-        //sourceManager.open("resources/sinErrores/${args[0]}")
         sourceManager.open(args[0])
         parser.start()
 
@@ -37,34 +36,6 @@ fun main(args: Array<String>) {
 
         fileWriter.createFile(args[1])
         symbolTable.generateCode()
-
-//        symbolTable.classMap.values.forEach {
-//
-////            println("Ancestros de ${it.token.lexeme}: ${it.ancestors}")
-////            println()
-////
-////            println("Atributos de instancia de ${it.token.lexeme}:")
-////
-////            it.attributeMap.values.forEach { attrSet ->
-////                attrSet.forEach {
-////                    println("\tNombre: ${it.token.lexeme}, clase de origen: ${it.parentClass.token.lexeme}, offset en CIR: ${it.offsetInCIR}")
-////                }
-////            }
-//
-//            println()
-//
-//            println("Métodos de instancia de ${it.token.lexeme}:")
-//
-//            it.methodMap.values.filter {
-//                it.modifier.lexeme != "static"
-//            }.forEach {
-//                println("\tNombre: ${it.token.lexeme}, clase de origen: ${it.parentClass.token.lexeme}; offset en vtable: ${it.offsetInVTable}")
-//            }
-//
-//            println()
-//        }
-
-
 
     } catch (e: LexicalException) {
         print(e.errorReport())
