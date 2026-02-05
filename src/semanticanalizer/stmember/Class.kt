@@ -38,7 +38,10 @@ open class Class() : Modifiable {
 
     var isConsolidated = false
 
-    val ancestors = mutableSetOf(objectToken.lexeme)
+    val ancestors = mutableSetOf<String>()
+
+    private var attributeOffsetsComputed = false
+    private var methodOffsetsComputed = false
 
     fun consolidate() {
         parentClass = symbolTable.classMap[parentClassToken.lexeme]!!
@@ -111,8 +114,6 @@ open class Class() : Modifiable {
                 currentMethodDefinition.token
             )
 
-
-
         if (currentMethodDefinition.paramMap.size != parentMethodDefinition.paramMap.size)
             throw InvalidRedefinitionException(
                 "La redefinición no tiene la misma cantidad de parámetros",
@@ -147,6 +148,8 @@ open class Class() : Modifiable {
                 )
             }
         }
+
+        currentMethodDefinition.offsetInVTable = parentMethodDefinition.offsetInVTable
     }
 
     override fun isWellDeclared() {
@@ -177,12 +180,14 @@ open class Class() : Modifiable {
 
         attributeMap.values.forEach { set ->
             set.forEach { attr ->
-                attr.isWellDeclared()
+                if (attr.parentClass == this)
+                    attr.isWellDeclared()
             }
         }
 
         methodMap.values.forEach {
-            it.isWellDeclared()
+            if (it.parentClass == this)
+                it.isWellDeclared()
         }
     }
 
@@ -195,6 +200,7 @@ open class Class() : Modifiable {
         val inheritanceCircuit = mutableListOf<Class>()
         withoutCircularity.addAll(setOf(Object, StringClass, System))
 
+        border.push(Object)
         border.push(this)
 
         while (border.isNotEmpty()) {
@@ -258,27 +264,91 @@ open class Class() : Modifiable {
     }
 
     override fun generateCode() {
+
+        val nonStaticMethodsList = methodMap.values.filter { it.modifier.type != STATIC }
+
         //vtable
+        fileWriter.write("")
         fileWriter.writeDataSectionHeader()
-        //TODO: revisar esto del nop
-        fileWriter.writeLabeledInstruction("vt${token.lexeme}", "NOP")
+        fileWriter.write("")
 
-        methodMap.takeIf { it.isNotEmpty() }?.let {
-            fileWriter.writeCodeSectionHeader()
+        if (nonStaticMethodsList.isEmpty())
+            fileWriter.writeLabeledInstruction("vt${token.lexeme}", "NOP")
+        else {
+            var dwSentence = "DW "
 
-            it.values.forEach { met ->
-                met.takeIf { this.owns(met) }?.generateCode()
+            val methodsGroupedByClass = methodMap.values.sortedBy {
+                ancestors.reversed().indexOf(it.parentClass.token.lexeme)
             }
+
+            dwSentence += methodsGroupedByClass.filter { it.modifier.type != STATIC }.joinToString {
+                it.getCodeLabel()
+            }.takeIf { it != "" } ?: "0"
+
+            fileWriter.writeLabeledInstruction("vt${token.lexeme}", dwSentence)
         }
 
-        //TODO: generación de constructores
+        fileWriter.write("")
+        fileWriter.writeCodeSectionHeader()
+        fileWriter.write("")
+
         constructor.generateCode()
+        fileWriter.write("")
+
+        methodMap.values.forEach { met ->
+            met.takeIf { this.owns(met) }?.generateCode()
+            fileWriter.write("")
+        }
 
         fileWriter.write("")
     }
 
     fun owns(method: Method): Boolean {
         return method.parentClass === this
+    }
+
+    fun calculateAttributeOffsets() {
+
+        if (attributeOffsetsComputed.not() && this !in setOf(Object, StringClass, System)) {
+            if (parentClass.attributeOffsetsComputed.not())
+                parentClass.calculateAttributeOffsets()
+
+            val attrList = attributeMap.flatMap { it.value }
+            var attrGroupedByParentClassList = attrList.groupBy { it.parentClass }.flatMap { it.value }
+
+            attrGroupedByParentClassList = attrGroupedByParentClassList.sortedBy { ancestors.reversed().toList().indexOf(it.parentClass.token.lexeme) }
+
+            var initIndex = (parentClass.attributeMap.flatMap { it.value }.maxByOrNull {
+                it.offsetInCIR
+            }?.offsetInCIR?.plus(1)) ?: 1
+
+            attrGroupedByParentClassList.forEach {
+                if (it.parentClass == this)
+                    it.offsetInCIR = initIndex++
+            }
+
+            attributeOffsetsComputed = true
+        }
+    }
+
+    fun calculateMethodOffsets() {
+
+        if (methodOffsetsComputed.not() && this !in setOf(Object, StringClass, System)) {
+            if (parentClass.methodOffsetsComputed.not())
+                parentClass.calculateMethodOffsets()
+
+            var initOffset = parentClass.methodMap.maxByOrNull {
+                it.value.offsetInVTable
+            }?.value?.offsetInVTable ?: -1
+
+            methodMap.values.filter {
+                it.parentClass == this && it.modifier.type != STATIC
+            }.forEach {
+                it.offsetInVTable = it.parentClass.parentClass.methodMap[it.token.lexeme]?.offsetInVTable ?: ++initOffset
+            }
+
+            methodOffsetsComputed = true
+        }
     }
 }
 
@@ -289,6 +359,7 @@ object Object: Class() {
 
     init {
         isConsolidated = true
+        ancestors.add("Object")
 
         methodMap = mutableMapOf(
             "debugPrint" to Method(
@@ -334,7 +405,9 @@ object StringClass: Class() {
     init {
         parentClass = Object
         isConsolidated = true
-        ancestors += "String"
+        ancestors.addAll(setOf("Object", "String"))
+
+        constructor.token = Token(CLASS_IDENTIFIER, "String", -1)
     }
 }
 
@@ -347,6 +420,9 @@ object System : Class() {
     init {
         parentClass = Object
         isConsolidated = true
+        ancestors.addAll(setOf("Object", "System"))
+
+        constructor.token = Token(CLASS_IDENTIFIER, "System", -1)
 
         methodMap = mutableMapOf(
             "read" to Method(
@@ -485,6 +561,18 @@ object System : Class() {
             ).also {
                 it.typeToken = Token(VOID, "void", -1)
                 it.modifier = staticToken
+
+                it.block = object: Block(
+                    it,
+                    DummyToken,
+                    null
+                ) {
+                    override fun check() {}
+
+                    override fun generateCode() {
+                        fileWriter.write("PRNLN")
+                    }
+                }
             },
             "printBln" to Method(
                 Token(MET_VAR_IDENTIFIER, "printBln", -1),
@@ -508,6 +596,8 @@ object System : Class() {
                     override fun check() {}
 
                     override fun generateCode() {
+                        fileWriter.writeLoad(3)
+                        fileWriter.write("BPRINT")
                         fileWriter.write("PRNLN")
                     }
                 }
@@ -597,7 +687,5 @@ object System : Class() {
                 }
             }
         )
-
-        ancestors += "System"
     }
 }

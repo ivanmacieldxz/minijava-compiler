@@ -1,14 +1,21 @@
 package semanticanalizer.ast.member
 
+import fileWriter
 import semanticanalizer.ast.ASTMember
+import semanticanalizer.stmember.Method
+import symbolTable
 import utils.Token
+import utils.TokenType
+import kotlin.collections.first
 
 val primitiveTypesSet = setOf("int", "boolean", "char")
 
 interface Expression: ASTMember {
     var parentNode: ASTMember
+    var type: String?
 
     fun check(type: String?): String?
+    fun generateCodeAsInstanceMetParams()
 }
 
 class BinaryExpression(
@@ -17,6 +24,8 @@ class BinaryExpression(
     var operator: Token
 ): Expression {
     lateinit var rightExpression: Expression
+
+    override var type: String? = null
 
     companion object {
         private val logicOperators = setOf("||", "&&")
@@ -42,10 +51,6 @@ class BinaryExpression(
         rightExpression.printSubAST(nestingLevel + 1)
     }
 
-    override fun generateCode() {
-        TODO("Not yet implemented")
-    }
-
     override fun check(type: String?): String {
         val leftType = leftExpression.check(null)
 
@@ -68,11 +73,69 @@ class BinaryExpression(
 
         checkCompatibleExpressionTypes(leftType, rightType, operator)
 
-        val expType = resultingPrimitiveType(leftType, operator.lexeme)
+        this.type = resultingPrimitiveType(leftType, operator.lexeme)
 
-        checkCompatibleTypes(type, expType, operator)
+        checkCompatibleTypes(type, this.type, operator)
 
-        return expType
+        return this.type!!
+    }
+
+    override fun generateCode() {
+        leftExpression.generateCode()
+        rightExpression.generateCode()
+
+        generateOperatorCode()
+
+    }
+
+    override fun generateCodeAsInstanceMetParams() {
+        generateCode()
+
+        fileWriter.writeSwap()
+    }
+
+    private fun generateOperatorCode() {
+        when (operator.lexeme) {
+            "+" -> {
+                fileWriter.write("ADD")
+            }
+            "-" -> {
+                fileWriter.write("SUB")
+            }
+            "*" -> {
+                fileWriter.write("MUL")
+            }
+            "/" -> {
+                fileWriter.write("DIV")
+            }
+            "%" -> {
+                fileWriter.write("MOD")
+            }
+            "&&" -> {
+                fileWriter.write("AND")
+            }
+            "||" -> {
+                fileWriter.write("OR")
+            }
+            "==" -> {
+                fileWriter.write("EQ")
+            }
+            "!=" -> {
+                fileWriter.write("NE")
+            }
+            ">" -> {
+                fileWriter.write("GT")
+            }
+            "<" -> {
+                fileWriter.write("LT")
+            }
+            ">=" -> {
+                fileWriter.write("GE")
+            }
+            "<=" -> {
+                fileWriter.write("LE")
+            }
+        }
     }
 
     private fun resultingPrimitiveType(left: String?, operator: String) =
@@ -97,6 +160,8 @@ class BasicExpression(
     var operator: Token? = null
     lateinit var operand: Operand
 
+    override var type: String? = null
+
     override fun printItselfAndChildren(nestingLevel: Int) {
         print("\t".repeat(nestingLevel) + this)
     }
@@ -112,15 +177,10 @@ class BasicExpression(
         operand.printSubAST(nestingLevel + 1)
     }
 
-    override fun generateCode() {
-        //TODO: considerar el oeprador para la generación de código
-        operand.generateCode()
-    }
-
     override fun check(type: String?): String? {
         val operandType = operand.check(type)
 
-        return operator?.let {
+        this.type = operator?.let {
 
             if (operand is Primary) {
                 var endOfChaining = operand as Primary
@@ -128,7 +188,7 @@ class BasicExpression(
                 while (endOfChaining.chained != null)
                     endOfChaining = endOfChaining.chained!!
 
-                if (endOfChaining !is VariableAccess)
+                if (endOfChaining !is VariableAccess && operator!!.lexeme in setOf("++", "--"))
                     throw object: InvalidUnaryOperatorException(operator!!, operandType!!) {
                         override val message: String
                             get() = "Los operadores de incremento y decremento son aplicables solo sobre " +
@@ -139,6 +199,174 @@ class BasicExpression(
 
             resultingType(operandType, it)
         } ?: operandType
+
+        return this.type
+    }
+
+    override fun generateCode() {
+
+        operator?.let {
+
+            val containerBlock = {
+                var sentencePointer = parentNode
+
+                while (sentencePointer !is Block) {
+                    sentencePointer = when (sentencePointer) {
+                        is Expression -> {
+                            sentencePointer.parentNode
+                        }
+                        is Sentence -> {
+                            sentencePointer.parentSentence!!
+                        }
+                        else -> {
+                            (sentencePointer as Primary).parent
+                        }
+                    }
+                }
+
+                sentencePointer
+            }()
+
+            val containerCallable = containerBlock.parentMember
+            val containerClass = containerCallable.parentClass
+
+            var receiverType: String
+            val baseAccess = (operand as? Primary) ?: (operand as Primitive)
+            var token = baseAccess.token
+
+            if (baseAccess is Primary) {
+                if (baseAccess.chained == null) {
+                    when (token.lexeme) {
+                        in containerBlock.visibleVariablesMap -> {
+                            val position = -containerBlock.visibleVariablesMap.keys.indexOf(token.lexeme)
+
+                            fileWriter.writeLoad(position)
+
+                            writeUnaryOperator()
+
+                            if (operator!!.lexeme in setOf("++", "--")) {
+                                fileWriter.writeStore(position)
+                                baseAccess.generateCode()
+                            }
+                        }
+
+                        in containerCallable.paramMap -> {
+                            val stackRecordOffset = (containerCallable as? Method)?.let {
+                                if (it.modifier.type == TokenType.STATIC) 2
+                                else 3
+                            } ?: 3
+
+                            val position = containerCallable.paramMap.keys.indexOf(token.lexeme) + stackRecordOffset + 1
+
+                            fileWriter.writeLoad(position)
+
+                            writeUnaryOperator()
+
+                            if (operator!!.lexeme in setOf("++", "--")) {
+                                fileWriter.writeStore(position)
+                                baseAccess.generateCode()
+                            }
+                        }
+
+                        in containerClass.attributeMap -> {
+                            val matchingNameAttributeSet = containerClass.attributeMap[token.lexeme]!!
+
+                            //obtener el que sea de esta clase o la última redefinición del atributo del mismo nombre
+                            val attribute = matchingNameAttributeSet.firstOrNull {
+                                it.parentClass == containerClass
+                            } ?: matchingNameAttributeSet.first()
+
+                            val offset = attribute.offsetInCIR
+
+                            fileWriter.writeLoad(3)
+                            fileWriter.writeSwap()
+
+                            fileWriter.writeDup()
+                            fileWriter.writeLoadRef(offset)
+
+                            writeUnaryOperator()
+
+                            if (operator!!.lexeme in setOf("++", "--")) {
+                                fileWriter.writeStoreRef(offset)
+                                baseAccess.generateCode()
+                            }
+                        }
+                        else -> {
+                            baseAccess.generateCode()
+                            writeUnaryOperator()
+                        }
+                    }
+                } else {
+
+                    //carga normal
+                    receiverType = baseAccess.generateCodeWithoutChained()
+
+                    //iteracion sobre encadenado
+                    var access = baseAccess.chained!!
+
+                    while (access.chained != null) {
+                        receiverType = access.generateCodeWithoutChained(receiverType)
+
+                        access = access.chained!!
+                    }
+
+                    token = access.token
+
+                    val matchingNameAttributeSet = symbolTable.classMap[receiverType]!!.attributeMap[token.lexeme]!!
+
+                    //obtener el que sea de esta clase o la última redefinición del atributo del mismo nombre
+                    val attribute = matchingNameAttributeSet.first()
+
+                    val offset = attribute.offsetInCIR
+
+                    fileWriter.writeLoad(3)
+                    fileWriter.writeSwap()
+
+                    fileWriter.writeDup()
+                    fileWriter.writeLoadRef(offset)
+
+                    writeUnaryOperator()
+
+                    if (operator!!.lexeme in setOf("++", "--")) {
+                        fileWriter.writeStoreRef(offset)
+                        baseAccess.generateCode()
+                    }
+                }
+            } else {
+                baseAccess.generateCode()
+            }
+
+        } ?: {
+            operand.generateCode()
+        }()
+    }
+
+    private fun writeUnaryOperator() {
+        //te quedaste en determinar qué apilar dependiendo del tipo de operador unario
+        //se te ocurrió que capaz se puede factorizar hacia afuera
+        when (operator!!.lexeme) {
+            "-" -> {
+                fileWriter.write("NEG")
+            }
+            "++" -> {
+                fileWriter.writePush("1")
+                fileWriter.write("ADD")
+            }
+            "--" -> {
+                fileWriter.writePush("1")
+                fileWriter.write("SUB")
+            }
+            "!" -> {
+                fileWriter.write("NOT")
+            }
+        }
+    }
+
+    override fun generateCodeAsInstanceMetParams() {
+
+        generateCode()
+
+        fileWriter.writeSwap()
     }
 
     private fun resultingType(operandType: String?, operator: Token) =

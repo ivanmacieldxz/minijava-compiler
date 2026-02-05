@@ -7,15 +7,32 @@ import semanticanalizer.stmember.Class
 import semanticanalizer.stmember.Method
 import symbolTable
 import utils.Token
-import utils.Token.DummyToken
 import utils.TokenType
 import kotlin.collections.contains
 import kotlin.collections.first
+import kotlin.collections.indexOf
 
 interface Operand: ASTMember {
     var token: Token
 
     fun check(expectedType: String?): String?
+}
+
+interface Primary : Operand {
+    var chained: Chained?
+    var parent: ASTMember
+
+    override fun printItselfAndChildren(nestingLevel: Int) {
+        print("\t".repeat(nestingLevel) + this)
+    }
+
+    fun generateCodeWithoutChained(): String
+
+    fun popIfChainedIsStaticMethodAccess(receiverType: String) {
+        if (chained is MethodCall &&
+            symbolTable.classMap[receiverType]!!.methodMap[chained!!.token.lexeme]!!.modifier.type == TokenType.STATIC)
+            fileWriter.writePop()
+    }
 }
 
 interface Call: Primary {
@@ -24,6 +41,8 @@ interface Call: Primary {
 
 interface Chained: Primary {
     fun checkChained(receiverType: String?): String
+    fun generateAsChained(receiverType: String)
+    fun generateCodeWithoutChained(receiverType: String): String
 }
 
 class Primitive(override var token: Token): Operand {
@@ -60,17 +79,20 @@ class Primitive(override var token: Token): Operand {
     }
 
     override fun generateCode() {
-        //TODO: considerar los casos en los que no es un entero el primitivo
-        fileWriter.writePush(token.lexeme)
-    }
-}
+        val primitiveValue: String = when (token.type) {
+            TokenType.INTEGER_LITERAL -> token.lexeme
+            TokenType.CHAR_LITERAL ->
+                if (token.lexeme[1] == '\\') {
+                    token.lexeme[2].code.toString()
+                } else {
+                    token.lexeme[1].code.toString()
+                }
+            TokenType.TRUE -> "1"
+            TokenType.FALSE -> "0"
+            else -> "0      #NULL"
+        }
 
-interface Primary : Operand {
-    var chained: Chained?
-    var parent: ASTMember
-
-    override fun printItselfAndChildren(nestingLevel: Int) {
-        print("\t".repeat(nestingLevel) + this)
+        fileWriter.writePush(primitiveValue)
     }
 }
 
@@ -94,10 +116,6 @@ class ParenthesizedExpression(
         }
     }
 
-    override fun generateCode() {
-        TODO("Not yet implemented")
-    }
-
     override fun check(expectedType: String?): String? {
         var type = expression.check(null)
 
@@ -106,6 +124,21 @@ class ParenthesizedExpression(
         checkCompatibleTypes(expectedType, type, token)
 
         return type
+    }
+
+    override fun generateCode() {
+        expression.generateCode()
+
+        val receiverType = expression.type!!
+
+        popIfChainedIsStaticMethodAccess(receiverType)
+
+        chained?.generateAsChained(receiverType)
+    }
+
+    override fun generateCodeWithoutChained(): String {
+        expression.generateCode()
+        return expression.type!!
     }
 }
 
@@ -152,8 +185,30 @@ class LiteralPrimary(
     }
 
     override fun generateCode() {
-        fileWriter.writePush(token.lexeme)
+
+        val receiverType = generateCodeWithoutChained()
+
+        popIfChainedIsStaticMethodAccess(receiverType)
+
+        chained?.generateAsChained(receiverType)
+
     }
+
+    override fun generateCodeWithoutChained() =
+        when (token.type) {
+            TokenType.THIS -> {
+                fileWriter.writeLoad(3, "carga del this")
+                containerClass.token.lexeme
+            }
+            else -> {
+                fileWriter.writeDataSectionHeader()
+                fileWriter.writeDW("string${symbolTable.strLiteralsCount++}", token.lexeme)
+                fileWriter.writeCodeSectionHeader()
+                fileWriter.writePush("string${symbolTable.strLiteralsCount - 1}")
+
+                "String"
+            }
+        }
 }
 
 class VariableAccess(
@@ -175,10 +230,6 @@ class VariableAccess(
             println("\t".repeat(nestingLevel + 1) + "Encadenado:")
             it.printSubAST(nestingLevel + 1)
         }
-    }
-
-    override fun generateCode() {
-        TODO("Not yet implemented")
     }
 
     override fun check(expectedType: String?): String {
@@ -218,6 +269,86 @@ class VariableAccess(
         val type = symbolTable.classMap[receiverType]!!.attributeMap[token.lexeme]!!.first().typeToken.lexeme
 
         return chained?.checkChained(type) ?: type
+    }
+
+    override fun generateCode() {
+        val receiverType = generateCodeWithoutChained()
+
+        popIfChainedIsStaticMethodAccess(receiverType)
+
+        chained?.generateAsChained(receiverType)
+    }
+
+    override fun generateCodeWithoutChained() =
+        when (token.lexeme) {
+            in containerBlock.visibleVariablesMap -> {
+                val position = -containerBlock.visibleVariablesMap.keys.indexOf(token.lexeme)
+
+                fileWriter.writeLoad(position)
+
+                containerBlock.visibleVariablesMap[token.lexeme]!!.type
+            }
+            in containerCallable.paramMap -> {
+                val stackRecordOffset = (containerCallable as? Method)?.let {
+                    if (it.modifier.type == TokenType.STATIC) 2
+                    else 3
+                } ?: 3
+
+                val position = containerCallable.paramMap.keys.indexOf(token.lexeme) + stackRecordOffset + 1
+
+                fileWriter.writeLoad(position)
+
+                containerCallable.paramMap[token.lexeme]!!.typeToken.lexeme
+            }
+            else -> {
+                val matchingNameAttributeSet = containerClass.attributeMap[token.lexeme]!!
+
+                //obtener el que sea de esta clase o la última redefinición del atributo del mismo nombre
+                val attribute = matchingNameAttributeSet.first()
+
+                val offset = attribute.offsetInCIR
+
+                fileWriter.writeLoad(3)
+                fileWriter.writeLoadRef(offset)
+
+                attribute.typeToken.lexeme
+            }
+        }
+
+    override fun generateCodeWithoutChained(receiverType: String): String {
+        val matchingNameAttributeSet = symbolTable.classMap[receiverType]!!.attributeMap[token.lexeme]!!
+
+        val attribute = matchingNameAttributeSet.first()
+
+        val offset = attribute.offsetInCIR
+
+
+        fileWriter.writeLoadRef(offset)
+
+        val type = attribute.typeToken.lexeme
+
+        popIfChainedIsStaticMethodAccess(type)
+
+        return type
+    }
+
+    override fun generateAsChained(receiverType: String) {
+        //la diferencia acá es que no tiene que cargar this porque la referencia ya está puesta, solo tiene que
+        //hacer el loadRef y generar el encadenado
+        val ownerClass = symbolTable.classMap[receiverType]
+
+        //obtener el que sea de esta clase o la última redefinición del atributo del mismo nombre
+        val attribute = ownerClass!!.attributeMap[token.lexeme]!!.first()
+
+        val offset = attribute.offsetInCIR
+
+        fileWriter.writeLoadRef(offset)
+
+        val receiverType = attribute.typeToken.lexeme
+
+        popIfChainedIsStaticMethodAccess(receiverType)
+
+        chained?.generateAsChained(receiverType)
     }
 }
 
@@ -290,10 +421,7 @@ class MethodCall(
     }
 
     override fun checkChained(receiverType: String?): String {
-        if (receiverType == "void")
-            throw InvalidChainingException(token)
-
-        if (receiverType in primitiveTypesSet)
+        if (receiverType == null || receiverType == "void" || receiverType in primitiveTypesSet)
             throw InvalidChainingException(token)
 
         if (token.lexeme !in symbolTable.classMap[receiverType]!!.methodMap)
@@ -333,13 +461,68 @@ class MethodCall(
     }
 
     override fun generateCode() {
+        val receiverType = generateCodeWithoutChained()
+
+        popIfChainedIsStaticMethodAccess(receiverType)
+
+        chained?.generateAsChained(receiverType)
+    }
+
+    override fun generateAsChained(receiverType: String) {
+        val receiverType = generateCodeWithoutChained(receiverType)
+
+        popIfChainedIsStaticMethodAccess(receiverType)
+
+        chained?.generateAsChained(receiverType)
+    }
+
+    override fun generateCodeWithoutChained(): String {
         val calledMethod = containerClass.methodMap[token.lexeme]!!
 
-        arguments.forEach { it.generateCode() }
+        if (calledMethod.typeToken.type != TokenType.VOID) {
+            fileWriter.writeRMEM(1)
+        }
+
+        if (calledMethod.modifier.type == TokenType.STATIC)
+            arguments.reversed().forEach { it.generateCode() }
+        else {
+            fileWriter.writeLoad(3)
+
+            arguments.reversed().forEach { it.generateCodeAsInstanceMetParams() }
+        }
 
         fileWriter.writePush(calledMethod.getCodeLabel())
         fileWriter.writeCall()
 
+        return calledMethod.typeToken.lexeme
+    }
+
+    override fun generateCodeWithoutChained(receiverType: String): String {
+        val calledMethod = symbolTable.classMap[receiverType]!!.methodMap[token.lexeme]!!
+
+        if (calledMethod.typeToken.type != TokenType.VOID) {
+            fileWriter.writeRMEM(1)
+            fileWriter.writeSwap()
+        }
+
+        if (calledMethod.modifier.type == TokenType.STATIC) {
+            arguments.reversed().forEach { it.generateCode() }
+
+            fileWriter.writePush(calledMethod.getCodeLabel())
+        }else {
+            arguments.reversed().forEach { it.generateCodeAsInstanceMetParams() }
+
+            fileWriter.writeDup()
+
+            //acá tengo que acceder desde la vtable porque no sé si la implementación que es accesible desde el
+            //tipo de la variable es la misma que la del tipo dinámico
+            fileWriter.writeLoadRef(0, "acceso a vtable")
+            fileWriter.writeLoadRef(calledMethod.offsetInVTable, "${calledMethod.token}")
+        }
+
+        fileWriter.writeCall()
+
+        return calledMethod.typeToken.lexeme
     }
 }
 
@@ -364,10 +547,6 @@ class ConstructorCall(
             println("\t".repeat(nestingLevel + 1) + "Encadenado:")
             it.printSubAST(nestingLevel + 1)
         }
-    }
-
-    override fun generateCode() {
-        TODO("Not yet implemented")
     }
 
     override fun check(expectedType: String?): String {
@@ -399,6 +578,41 @@ class ConstructorCall(
 
         return type
     }
+
+    override fun generateCode() {
+        generateCodeWithoutChained()
+
+        val receiverType = token.lexeme
+
+        popIfChainedIsStaticMethodAccess(receiverType)
+
+        chained?.generateAsChained(receiverType)
+    }
+
+    override fun generateCodeWithoutChained(): String {
+        val constructorClass = symbolTable.classMap[token.lexeme]!!
+        val calledConstructor = constructorClass.constructor
+        val cirSize = constructorClass.attributeMap.size + 1
+
+        //this
+        fileWriter.writeRMEM(1)
+        fileWriter.writePush(cirSize.toString() + " ; tamaño cir ${token.lexeme}")
+        fileWriter.writePush("simple_malloc")
+        fileWriter.writeCall()                  //me devuelve la referencia al cir
+        fileWriter.write("DUP")
+        //guardo en el cir (consumiendo la ref duplicada) la referencia a la vtable
+        fileWriter.writePush("vt${token.lexeme}")
+        fileWriter.writeStoreRef(0)
+        //vuelvo a duplicar la referencia al cir
+        fileWriter.write("DUP")
+
+        arguments.reversed().forEach { it.generateCodeAsInstanceMetParams() }
+
+        fileWriter.writePush(calledConstructor.getCodeLabel())
+        fileWriter.writeCall()
+
+        return token.lexeme
+    }
 }
 
 class StaticMethodCall(
@@ -424,10 +638,6 @@ class StaticMethodCall(
             println("\t".repeat(nestingLevel + 1) + "Encadenado:")
             it.printSubAST(nestingLevel + 1)
         }
-    }
-
-    override fun generateCode() {
-        TODO("Not yet implemented")
     }
 
     override fun check(expectedType: String?): String {
@@ -472,6 +682,28 @@ class StaticMethodCall(
         checkCompatibleTypes(expectedType, type, token)
 
         return type
+    }
+
+    override fun generateCode() {
+        val receiverType = generateCodeWithoutChained()
+
+        chained?.generateAsChained(receiverType)
+    }
+
+    override fun generateCodeWithoutChained(): String {
+        val calledMethod = symbolTable.classMap[token.lexeme]!!.methodMap[calledMethodToken.lexeme]!!
+
+        if (calledMethod.typeToken.type != TokenType.VOID) {
+            fileWriter.writeRMEM(1)
+            fileWriter.writeSwap()
+        }
+
+        arguments.reversed().forEach { it.generateCode()}
+
+        fileWriter.writePush(calledMethod.getCodeLabel())
+        fileWriter.writeCall()
+
+        return calledMethod.typeToken.lexeme
     }
 }
 

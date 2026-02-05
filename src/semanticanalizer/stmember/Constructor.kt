@@ -4,7 +4,6 @@ import fileWriter
 import semanticanalizer.ast.member.Block
 import utils.Token
 import utils.Token.DummyToken
-import java.io.FileWriter
 import java.util.Collections
 
 class Constructor(
@@ -29,11 +28,15 @@ class Constructor(
 
     override fun generateCode() {
         fileWriter.writeLabeledInstruction(getCodeLabel(), "LOADFP")
-        fileWriter.write("LOADSP")
-        fileWriter.write("STOREFP")
-        fileWriter.write("FMEM ${paramMap.size}")
-        fileWriter.write("STOREFP")
-        fileWriter.write("RET 1")
+        fileWriter.writeLoadSP()
+        fileWriter.writeStoreFP()
+
+        block?.generateCode() ?: {
+            fileWriter.writeFreeLocalVars(0)
+        }()
+
+        fileWriter.writeStoreFP()
+        fileWriter.writeRet(paramMap.size + 1)
     }
 
     override fun getCodeLabel(): String = "constructor@${parentClass.token.lexeme}"

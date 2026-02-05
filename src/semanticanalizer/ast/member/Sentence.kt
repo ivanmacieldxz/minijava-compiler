@@ -5,8 +5,13 @@ import semanticanalizer.ast.ASTMember
 import semanticanalizer.stmember.Callable
 import semanticanalizer.stmember.Constructor
 import semanticanalizer.stmember.Method
+import symbolTable
 import utils.Token
 import utils.TokenType
+import kotlin.collections.contains
+import kotlin.collections.first
+import kotlin.collections.firstOrNull
+import kotlin.collections.indexOf
 
 interface Sentence: ASTMember {
 
@@ -46,7 +51,7 @@ open class Block(
     }
 
     override fun printSubAST(nestingLevel: Int) {
-        println("\t".repeat(nestingLevel) + "Bloque:")
+        println("\t".repeat(nestingLevel) + "Bloque (padre: ${parentSentence?.token}):")
         childrenList.forEach { children ->
             children.printSubAST(nestingLevel + 1)
         }
@@ -70,13 +75,23 @@ open class Block(
     }
 
     override fun generateCode() {
-        //TODO: reserva de espacio para variables locales
+        visibleVariablesMap.size.takeIf { it != 0 }?.let {
+            fileWriter.writeRMEM(visibleVariablesMap.filter {
+                it.value.parentSentence == this
+            }.size)
+        }
 
         childrenList.forEach {
             it.generateCode()
+
+            if (it is Expression && it.type != "void") {
+                fileWriter.writePop()
+            }
         }
 
-        fileWriter.writeFreeLocalVars(visibleVariablesMap.size)
+        fileWriter.writeFreeLocalVars(visibleVariablesMap.filter {
+            it.value.parentSentence == this
+        }.size)
     }
 }
 
@@ -110,10 +125,6 @@ class If(
         elseSentence?.printSubAST(nestingLevel)
     }
 
-    override fun generateCode() {
-        TODO("Not yet implemented")
-    }
-
     override fun check() {
 
         condition!!.check("boolean")
@@ -132,6 +143,25 @@ class If(
                 body.check(null)
             }
         }
+
+        elseSentence?.check()
+    }
+
+    override fun generateCode() {
+        condition!!.generateCode()
+
+        val ifIdentityHashCode = System.identityHashCode(this)
+        val endThenLabel = "endThen@$ifIdentityHashCode"
+        val endIfLabel = "endIf@$ifIdentityHashCode"
+
+        fileWriter.write("BF $endThenLabel")
+        body!!.generateCode()
+        fileWriter.write("JUMP $endIfLabel")
+        fileWriter.writeLabeledInstruction(endThenLabel, "NOP")
+
+        elseSentence?.generateCode()
+
+        fileWriter.writeLabeledInstruction(endIfLabel, "NOP")
     }
 }
 
@@ -156,7 +186,7 @@ class Else(
     }
 
     override fun generateCode() {
-        TODO("Not yet implemented")
+        body!!.generateCode()
     }
 
     override fun check() {
@@ -201,7 +231,17 @@ class While(
     }
 
     override fun generateCode() {
-        TODO("Not yet implemented")
+        val whileIdentityHashCode = System.identityHashCode(this)
+        val startLabel = "whileStart@$whileIdentityHashCode"
+        val endLabel = "endWhile@$whileIdentityHashCode"
+
+        fileWriter.writeLabeledInstruction(startLabel, "NOP")
+        condition!!.generateCode()
+        fileWriter.write("BF $endLabel")
+        body!!.generateCode()
+        fileWriter.write("JUMP $startLabel")
+        fileWriter.writeLabeledInstruction(endLabel, "NOP")
+
     }
 
     override fun check() {
@@ -241,10 +281,6 @@ class Return(
         body?.printSubAST(nestingLevel + 1)
     }
 
-    override fun generateCode() {
-        TODO("Not yet implemented")
-    }
-
     override fun check() {
         when (val parent = parentMember) {
             is Method -> {
@@ -267,6 +303,33 @@ class Return(
             }
         }
     }
+
+    override fun generateCode() {
+        fileWriter.writeFreeLocalVars(parentMember.block!!.visibleVariablesMap.size)
+
+        body?.let{
+            it.generateCode()
+
+            if (parentMember is Constructor)
+                fileWriter.writeStore(2 + parentMember.paramMap.size + 2)
+            else if ((parentMember as Method).typeToken.type != TokenType.VOID) {
+                val storeSize = 2 + parentMember.paramMap.size + (2.takeIf {
+                    (parentMember as Method).modifier.type != TokenType.STATIC
+                } ?: 1)
+
+                fileWriter.writeStore(storeSize)
+            }
+        }
+
+        val returnSize = parentMember.paramMap.size +
+                (1.takeIf { parentMember is Constructor ||
+                        (parentMember as Method).modifier.type != TokenType.STATIC }
+                ?: 0)
+
+        fileWriter.writeStoreFP()
+        fileWriter.writeRet(returnSize)
+
+    }
 }
 
 class LocalVar(
@@ -284,15 +347,12 @@ class LocalVar(
     }
 
     override fun printSubAST(nestingLevel: Int) {
-        println("\t".repeat(nestingLevel) + "Var local($varName):")
+        println("\t".repeat(nestingLevel) + "Var local($varName) (abuelo: ${parentSentence!!.parentSentence!!.token}:")
         expression.printSubAST(nestingLevel + 1)
     }
 
-    override fun generateCode() {
-        TODO("Not yet implemented")
-    }
-
     override fun check() {
+
         type = expression.check(null)
             ?: throw InvalidVarInitializationException(
                 token,
@@ -304,6 +364,24 @@ class LocalVar(
                 token,
                 "La expresión del lado derecho de la declaración no devuelve un valor."
             )
+    }
+
+    override fun generateCode() {
+        var ownerBlock: Block?
+        var sentencePointer = parentSentence!!
+
+        while (sentencePointer !is Block) {
+            sentencePointer = sentencePointer.parentSentence!!
+        }
+
+        ownerBlock = sentencePointer
+
+        expression.generateCode()
+
+        val index = -ownerBlock.visibleVariablesMap.values.indexOf(this)
+
+        fileWriter.writeStore(index)
+
     }
 
 }
@@ -330,7 +408,90 @@ class Assignment(
     }
 
     override fun generateCode() {
-        TODO("Not yet implemented")
+
+        val containerBlock = {
+            var sentencePointer = parentSentence!!
+
+            while (sentencePointer !is Block) {
+                sentencePointer = sentencePointer.parentSentence!!
+            }
+
+            sentencePointer
+        }()
+
+        val containerCallable = containerBlock.parentMember
+        val containerClass = containerCallable.parentClass
+
+        rightExpression.generateCode()
+
+        var receiverType: String
+        val baseAccess = (leftExpression as BasicExpression).operand as Primary
+        var token = baseAccess.token
+
+        if (baseAccess.chained == null) {
+            when (token.lexeme) {
+                in containerBlock.visibleVariablesMap -> {
+                    val position = -containerBlock.visibleVariablesMap.keys.indexOf(token.lexeme)
+
+                    fileWriter.writeStore(position)
+                }
+
+                in containerCallable.paramMap -> {
+                    val stackRecordOffset = (containerCallable as? Method)?.let {
+                        if (it.modifier.type == TokenType.STATIC) 2
+                        else 3
+                    } ?: 3
+
+                    val position = containerCallable.paramMap.keys.indexOf(token.lexeme) + stackRecordOffset + 1
+
+                    fileWriter.writeStore(position)
+                }
+
+                else -> {
+                    val matchingNameAttributeSet = containerClass.attributeMap[token.lexeme]!!
+
+                    //obtener el que sea de esta clase o la última redefinición del atributo del mismo nombre
+                    val attribute = matchingNameAttributeSet.firstOrNull {
+                        it.parentClass == containerClass
+                    } ?: matchingNameAttributeSet.first()
+
+                    val offset = attribute.offsetInCIR
+
+                    fileWriter.writeLoad(3)
+                    fileWriter.writeSwap()
+                    fileWriter.writeStoreRef(offset)
+                }
+            }
+        } else {
+
+            //carga normal
+            receiverType = baseAccess.generateCodeWithoutChained()
+
+            //iteracion sobre encadenado
+            var access = baseAccess.chained!!
+
+            while (access.chained != null) {
+                receiverType = access.generateCodeWithoutChained(receiverType)
+
+                access = access.chained!!
+            }
+
+            token = access.token
+
+            val matchingNameAttributeSet = symbolTable.classMap[receiverType]!!.attributeMap[token.lexeme]!!
+
+            //obtener el que sea de esta clase o la última redefinición del atributo del mismo nombre
+            val attribute = matchingNameAttributeSet.first()
+
+            val offset = attribute.offsetInCIR
+
+            fileWriter.writeSwap()
+            fileWriter.writeStoreRef(offset)
+        }
+
+
+
+
     }
 
     override fun check() {

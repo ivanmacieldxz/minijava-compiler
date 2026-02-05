@@ -13,6 +13,10 @@ class A {
     B m2() {
         return new B();
     }
+
+    static void main() {
+
+    }
 }
 
 class B {

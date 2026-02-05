@@ -31,6 +31,8 @@ class SymbolTable {
 
     lateinit var mainMethod: Method
 
+    var strLiteralsCount = 0
+
     class Accumulator {
         var className: Token = DummyToken
         var classParent: Token = Object.token
@@ -83,7 +85,7 @@ class SymbolTable {
                 if (foundMain.not()) {
                     foundMain = it.token.lexeme == "main" && it.modifier.lexeme == "static"
                     mainMethod = it
-                } else if (it.token.lexeme == "main" && it.modifier.lexeme == "static")
+                } else if (it.token.lexeme == "main" && it.modifier.lexeme == "static" && it != mainMethod)
                     throw object : SemanticException(
                         "Solo se admite un método main por archivo MiniJava.",
                         DummyToken
@@ -102,11 +104,20 @@ class SymbolTable {
 
     fun generateCode() {
         fileWriter.writeCodeSectionHeader()
+
+        fileWriter.writePush("simple_heap_init")
+        fileWriter.writeCall()
+
         fileWriter.writePush(mainMethod.getCodeLabel())
         fileWriter.writeCall()
         fileWriter.writeHalt()
 
         fileWriter.writeAuxRoutines()
+
+        classMap.values.forEach {
+            it.calculateAttributeOffsets()
+            it.calculateMethodOffsets()
+        }
 
         classMap.values.forEach {
 

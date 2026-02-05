@@ -10,6 +10,9 @@ class Test2 extends Test {
     void m2(Test p1) {
         p1.m3();
     }
+    static void main() {
+
+    }
 }
 //class Test3 {
 //    void x(Test p1) {
